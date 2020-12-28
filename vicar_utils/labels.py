@@ -1,7 +1,7 @@
 from enum import Enum
 
 encoding = 'ASCII'
-
+separator = '='
 
 class Format(Enum):
     BYTE = ('BYTE', 1, 'B')
