@@ -8,14 +8,14 @@ from . import labels as lbl
 
 @dataclass
 class ImageFormat:
-    dtype: lbl.Format
-    dorder: Union[lbl.Intfmt, lbl.Realfmt]
+    dtype: lbl.NumFormat
+    dorder: Union[lbl.IFMT, lbl.RFMT]
 
 
 @dataclass
 class ImageType:
     iformat: ImageFormat
-    itype: lbl.Org
+    itype: lbl.DataOrg
     ns: int
     nl: int
     nb: int
@@ -29,9 +29,9 @@ class Image:
 
 
 def read_image(io: BinaryIO, frmt: ImageFormat, width: int, height: int, layers: int) -> np.ndarray:
-    if frmt is lbl.Format.DOUB or frmt is lbl.Format.REAL:
+    if frmt is lbl.NumFormat.DOUB or frmt is lbl.NumFormat.REAL:
         pass
-    elif frmt is lbl.Format.COMP or frmt is lbl.Format.COMPLEX:
+    elif frmt is lbl.NumFormat.COMP or frmt is lbl.NumFormat.COMPLEX:
         pass
 
 
@@ -42,6 +42,6 @@ def read_image(io: BinaryIO, frmt: ImageFormat, width: int, height: int, layers:
 
 img: np.ndarray
 def read(image: ImageType) -> np.ndarray:
-    if image.itype is lbl.Org.BSQ:
+    if image.itype is lbl.DataOrg.BSQ:
         pass
 

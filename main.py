@@ -41,17 +41,31 @@ if __name__ == '__main__':
         _img_path: str = 'test_image/N1533960372_1_CALIB.IMG'
         img: np.ndarray
         kv: Dict
+        data = None
         with open(_img_path, mode="rb") as f:
             from vicar_utils import reader
 
             size = reader.find_label_size(f)
             label = reader.export_label(f, size)
             kv = reader.process_label(label)
-            for key in kv:
-                print(key + "=" + str(kv[key]))
+
+            from vicar_utils import vicar_reader as vr
+            data = vr.read_image(f)
+
+            print()
+            print()
+
+            print("---NEW READER---")
+            print(data.labels)
+            print(data.properties)
+            print(data.tasks)
 
             img = reader.extract_image(f)
             print(img.shape)
+
+        plt.imshow(data.data[0])
+        plt.gca().invert_yaxis()
+        plt.show()
 
         print("\n\nLoading kernels")
         spice.furnsh(META_KERNEL)
