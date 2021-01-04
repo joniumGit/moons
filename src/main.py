@@ -1,11 +1,12 @@
-import datetime
 from typing import Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
 import spiceypy as spice
 from astropy.visualization import simple_norm
-from matplotlib.colors import LogNorm
+
+from vicar_utils import vicar_reader as vcr
+from vicar_utils.vicar_reader import VicarData
 
 BODY = 'ENCELADUS'
 CASSINI = 'CASSINI'
@@ -24,13 +25,6 @@ META_KERNEL = 'kernels/mk/commons.tm'
 TEST_KERNEL = 'kernels/mk/cas_2006_v26.tm'
 
 if __name__ == '__main__':
-    # Args testing
-    # print('SPICE version: %s' % spice.tkvrsn('TOOLKIT'))
-    # parser = argparse.ArgumentParser(description='Shadow depth library')
-    # parser.add_argument('kernels', metavar='K', type=str, nargs='+', help='Kernels to load')
-    # args = parser.parse_args()
-    # print(args.kernels)
-
     # Version
     print("_____SPICE_____")
     print_ver()
@@ -38,34 +32,18 @@ if __name__ == '__main__':
     # Testing kernel loading
     try:
         print("\n\nReading image")
-        _img_path: str = 'test_image/N1533960372_1_CALIB.IMG'
+        _img_path: str = '../test_image/N1533960372_1_CALIB.IMG'
         img: np.ndarray
         kv: Dict
-        data = None
+        data: VicarData
+
         with open(_img_path, mode="rb") as f:
-            from vicar_utils import reader
+            data = vcr.read_image(f)
 
-            size = reader.find_label_size(f)
-            label = reader.export_label(f, size)
-            kv = reader.process_label(label)
-
-            from vicar_utils import vicar_reader as vr
-            data = vr.read_image(f)
-
-            print()
-            print()
-
-            print("---NEW READER---")
-            print(data.labels)
-            print(data.properties)
-            print(data.tasks)
-
-            img = reader.extract_image(f)
-            print(img.shape)
-
-        plt.imshow(data.data[0])
-        plt.gca().invert_yaxis()
-        plt.show()
+        print("\n\n--IMAGE DATA--")
+        print(data.labels)
+        print(data.properties)
+        print(data.tasks)
 
         print("\n\nLoading kernels")
         spice.furnsh(META_KERNEL)
@@ -83,10 +61,7 @@ if __name__ == '__main__':
 
         J2K = 'J2000'
         ABCORR = 'NONE'
-        print('IDENTIFICATION' in kv)
-        print(kv.keys())
-        print(kv['IDENTIFICATION'])
-        utc = kv['IDENTIFICATION']['IMAGE_MID_TIME']
+        utc = data.properties['IDENTIFICATION']['IMAGE_MID_TIME']
         time = spice.utc2et(utc.strip()[:-1])
 
         # positions
@@ -141,9 +116,8 @@ if __name__ == '__main__':
         print("    Saturn: " + t_saturn.__str__())
 
         print("\n\nPlotting")
+        img: np.ndarray = data.data[0]
         plt.imshow(img, norm=simple_norm(img, 'sqrt'), cmap="gray")
-        # plt.plot((0, t_sun[0]), (0, t_sun[1]), label="Sun")
-        # plt.plot((0, t_saturn[0]), (0, t_saturn[1]), label="Saturn")
         x = 630
         y = 550
         sun_coord = np.vstack([x, y]).ravel() + t_sun[:2] * 200
@@ -156,8 +130,6 @@ if __name__ == '__main__':
         plt.gca().invert_yaxis()
         plt.legend()
         plt.show()
-
-        # TODO write pds parser
 
     except Exception as e:
         print("Something failed")

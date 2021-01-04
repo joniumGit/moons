@@ -4,11 +4,12 @@ from typing import Union, BinaryIO, Set, Dict, List, Callable, Optional, Tuple, 
 
 import numpy as np
 
-from vicar_utils import labels as lbl
-from vicar_utils.labels import VSL, VicarEnum, DataOrg, INT_FORMATS, FLOAT_FORMATS, NumFormat
+from src.vicar_utils import labels as lbl
+from src.vicar_utils.labels import VSL, VicarEnum, DataOrg, INT_FORMATS, FLOAT_FORMATS, NumFormat
 
 ARRAY_TYPE = List[Union[str, int, float]]
 OBJECT_TYPE = Dict[str, Union[str, int, float, ARRAY_TYPE]]
+DICT_TYPE = Dict[str, OBJECT_TYPE]
 VALUE_TYPE = Union[str, int, float, ARRAY_TYPE, OBJECT_TYPE]
 
 SYSTEM_TYPE = Dict[VicarEnum, Union[str, int, float, ARRAY_TYPE, VicarEnum]]
@@ -30,8 +31,8 @@ lbl_regex_value = "VALUE"
 class VicarData:
     __slots__ = 'labels', 'properties', 'tasks', 'data', 'binary_header', 'binary_prefix'
     labels: SYSTEM_TYPE
-    properties: Optional[OBJECT_TYPE]
-    tasks: Optional[OBJECT_TYPE]
+    properties: Optional[DICT_TYPE]
+    tasks: Optional[DICT_TYPE]
     data: Optional[np.ndarray]
     binary_header: OBJECT_TYPE
     binary_prefix: List[bytes]
@@ -146,8 +147,8 @@ def _is_special(key: str) -> bool:
 
 def _process_labels(
         raw_labels: Union[str, bytes],
-        defaults: Tuple[SYSTEM_TYPE, OBJECT_TYPE, OBJECT_TYPE] = None
-) -> Tuple[SYSTEM_TYPE, OBJECT_TYPE, OBJECT_TYPE]:
+        defaults: Tuple[SYSTEM_TYPE, DICT_TYPE, DICT_TYPE] = None
+) -> Tuple[SYSTEM_TYPE, DICT_TYPE, DICT_TYPE]:
     text: str
     if isinstance(raw_labels, bytes):
         text = str(raw_labels, encoding=lbl.encoding)
@@ -156,8 +157,8 @@ def _process_labels(
     matcher = lbl_regex.finditer(text)
 
     labels: SYSTEM_TYPE
-    properties: OBJECT_TYPE
-    tasks: OBJECT_TYPE
+    properties: DICT_TYPE
+    tasks: DICT_TYPE
     if defaults:
         labels = defaults[0]
         properties = defaults[1]
