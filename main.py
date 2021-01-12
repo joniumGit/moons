@@ -1,3 +1,4 @@
+import sys
 from typing import Dict
 
 import matplotlib.pyplot as plt
@@ -5,8 +6,7 @@ import numpy as np
 import spiceypy as spice
 from astropy.visualization import simple_norm
 
-from vicar_utils import vicar_reader as vcr
-from vicar_utils.vicar_reader import VicarData
+import vicarutil as vcr
 
 BODY = 'ENCELADUS'
 CASSINI = 'CASSINI'
@@ -21,8 +21,9 @@ def print_ver():
     print(spice.tkvrsn('TOOLKIT'))
 
 
-META_KERNEL = 'kernels/mk/commons.tm'
-TEST_KERNEL = 'kernels/mk/cas_2006_v26.tm'
+bp = sys.argv[1]
+META_KERNEL = bp + '/kernels/mk/commons.tm'
+TEST_KERNEL = bp + '/kernels/mk/cas_2006_v26.tm'
 
 if __name__ == '__main__':
     # Version
@@ -32,18 +33,20 @@ if __name__ == '__main__':
     # Testing kernel loading
     try:
         print("\n\nReading image")
-        _img_path: str = '../test_image/N1533960372_1_CALIB.IMG'
+        _img_path: str = bp + '/test_image/N1533960372_1_CALIB.IMG'
         img: np.ndarray
         kv: Dict
-        data: VicarData
+        data: vcr.VicarData
+        labels: vcr.Labels
 
         with open(_img_path, mode="rb") as f:
             data = vcr.read_image(f)
 
         print("\n\n--IMAGE DATA--")
-        print(data.labels)
-        print(data.properties)
-        print(data.tasks)
+        labels = data.labels
+        print(labels)
+        print(labels.properties)
+        print(labels.tasks)
 
         print("\n\nLoading kernels")
         spice.furnsh(META_KERNEL)
@@ -61,7 +64,7 @@ if __name__ == '__main__':
 
         J2K = 'J2000'
         ABCORR = 'NONE'
-        utc = data.properties['IDENTIFICATION']['IMAGE_MID_TIME']
+        utc = labels.property('IDENTIFICATION')['IMAGE_MID_TIME']
         time = spice.utc2et(utc.strip()[:-1])
 
         # positions

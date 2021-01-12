@@ -3,8 +3,8 @@ from typing import Type, Dict, List, Tuple, Optional, Set
 
 import numpy as np
 
-encoding = 'ASCII'
-separator = '='
+LABEL_ENCODING = 'ASCII'
+LABEL_SEPARATOR = '='
 
 
 class VicarEnum(Enum):
@@ -156,13 +156,13 @@ class VSL(VicarMultiEnum):
     System labels that define Vicar file properties
     """
     LBLSIZE = 'LBLSIZE', int  # .               Multiple of RECSIZE                 MANDATORY
-    FORMAT = 'FORMAT', NumFormat  # .   Format of data                      MANDATORY
-    TYPE = 'TYPE', DataType  # .           Data type                           default IMAGE
+    FORMAT = 'FORMAT', NumFormat  # .           Format of data                      MANDATORY
+    TYPE = 'TYPE', DataType  # .                Data type                           default IMAGE
     BUFSIZ = 'BUFSIZ', int  # .                 Buffer size              (obsolete) default RECSIZE
     DIM = 'DIM', int  # .                       Data dimensions  (2 in old, but =3) SET 3
     EOL = 'EOL', int  # .                       0, 1 End of file labels             default 0
     RECSIZE = 'RECSIZE', int  # .               Record size     (NBB + N1 * FORMAT) MANDATORY
-    ORG = 'ORG', DataOrg  # .              Data organization                   default BSQ
+    ORG = 'ORG', DataOrg  # .                   Data organization                   default BSQ
     NL = 'NL', int  # .                         Number of lines                     MANDATORY
     NS = 'NS', int  # .                         Number of samples                   MANDATORY
     NB = 'NB', int  # .                         Number of bands                     MANDATORY
@@ -172,12 +172,12 @@ class VSL(VicarMultiEnum):
     N4 = 'N4', int  # .                         Not implemented in standard         SET 0
     NBB = 'NBB', int  # .                       Binary prefix                       default 0
     NLB = 'NLB', int  # .                       Binary header                       default 0
-    HOST = 'HOST', HostType  # .           Host                         (doc)  default VAX-VMS
-    INTFMT = 'INTFMT', IFMT  # .      Integer format                      default LOW
-    REALFMT = 'REALFMT', RFMT  # .   Float format                        default VAX
-    BHOST = 'BHOST', HostType  # .         Binary host                  (doc)  default VAX-VMS
-    BINTFMT = 'BINTFMT', IFMT  # .    Binary Int format                   default LOW
-    BREALFMT = 'BREALFMT', RFMT  # . Binary Float format                 default VAX
+    HOST = 'HOST', HostType  # .                Host                         (doc)  default VAX-VMS
+    INTFMT = 'INTFMT', IFMT  # .                Integer format                      default LOW
+    REALFMT = 'REALFMT', RFMT  # .              Float format                        default VAX
+    BHOST = 'BHOST', HostType  # .              Binary host                  (doc)  default VAX-VMS
+    BINTFMT = 'BINTFMT', IFMT  # .              Binary Int format                   default LOW
+    BREALFMT = 'BREALFMT', RFMT  # .            Binary Float format                 default VAX
     BLTYPE = 'BLTYPE', str  # .                 Binary label/prefix host     (doc)  default \x00
     EOLLBLSIZE = 'eol_labels', int  # .         Custom - Eol lbl size        (custom)
     BEGLBLSIZE = 'beg_labels', int  # .         Custom - Eol lbl size        (custom)
@@ -215,7 +215,7 @@ class Special(VicarEnum):
     TASK = 'TASK'
 
 
-CLASSLIST: List[Type[VicarEnum]] = [
+SYSTEM_CLASS_LIST: List[Type[VicarEnum]] = [
     NumFormat,
     DataType,
     DataOrg,

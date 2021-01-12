@@ -64,5 +64,5 @@ Needs more test images to see if parsing is actually reliable.
 
 ### Notes
 
-Simple test read and image show is in [main](src/main.py) and reading in [reader](src/vicar_utils/reader.py)
+Simple test read and image show is in [main](main.py) and reading in [reader](vicarutil/old_reader_1.py)
 all based on previous work from [SpiceExample](idl/SpiceExample.pro) 

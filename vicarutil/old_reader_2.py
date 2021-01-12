@@ -1,20 +1,12 @@
 import re
-from dataclasses import dataclass
-from typing import Union, BinaryIO, Set, Dict, List, Callable, Optional, Tuple, Any
+import typing as t
+from typing import BinaryIO, Callable, Any
 
-import numpy as np
+from .entity import *
+from .definitions.definitions import *
+from .definitions.types import *
 
-from src.vicar_utils import labels as lbl
-from src.vicar_utils.labels import VSL, VicarEnum, DataOrg, INT_FORMATS, FLOAT_FORMATS, NumFormat
-
-ARRAY_TYPE = List[Union[str, int, float]]
-OBJECT_TYPE = Dict[str, Union[str, int, float, ARRAY_TYPE]]
-DICT_TYPE = Dict[str, OBJECT_TYPE]
-VALUE_TYPE = Union[str, int, float, ARRAY_TYPE, OBJECT_TYPE]
-
-SYSTEM_TYPE = Dict[VicarEnum, Union[str, int, float, ARRAY_TYPE, VicarEnum]]
-
-lbl_offset = len("LBLSIZE=".encode(lbl.encoding))
+lbl_offset = len("LBLSIZE=".encode(LABEL_ENCODING))
 numbers: Set[str] = set()
 for _i in range(0, 10):
     numbers.add(str(_i))
@@ -22,35 +14,8 @@ for _i in range(0, 10):
 lbl_regex = re.compile(r"(?P<KEY>[\S]+)[=](?P<VALUE>(?:(?=\')\'[^\']+\'|(?=\S)\S+|(?=\()(\([^\']+\))))?")
 int_regex = re.compile(r"^\d+$")
 float_regex = re.compile(r"(^[+-]?(?=.?\d)\d*\.\d*(?:[EeDd][+-]?[\d]+)?)")
-
 lbl_regex_key = "KEY"
 lbl_regex_value = "VALUE"
-
-
-@dataclass(frozen=True)
-class VicarData:
-    __slots__ = 'labels', 'properties', 'tasks', 'data', 'binary_header', 'binary_prefix'
-    labels: SYSTEM_TYPE
-    properties: Optional[DICT_TYPE]
-    tasks: Optional[DICT_TYPE]
-    data: Optional[np.ndarray]
-    binary_header: OBJECT_TYPE
-    binary_prefix: List[bytes]
-
-    def has_properties(self):
-        return self.properties is not None
-
-    def has_tasks(self):
-        return self.tasks is not None
-
-    def has_data(self):
-        return self.data is not None
-
-    def has_binary_header(self):
-        return self.binary_header is not None
-
-    def has_binary_prefix(self):
-        return self.binary_prefix is not None
 
 
 class StrIO:
@@ -65,7 +30,7 @@ class StrIO:
         self.file.seek(n, whence)
 
     def read(self, n: int = 1) -> str:
-        return str(self.file.read(n), encoding=lbl.encoding)
+        return str(self.file.read(n), encoding=LABEL_ENCODING)
 
     def unwrap(self) -> BinaryIO:
         return self.file
@@ -117,7 +82,7 @@ def _process_value(value: str, map_to_enum: bool = True) -> Union[int, float, st
     elif value[0] == '\'':
         value = value[1:-1]
     if map_to_enum:
-        for cls in lbl.CLASSLIST:
+        for cls in SYSTEM_CLASS_LIST:
             if cls.has_value(value):
                 return cls.map2member(value)
     return value
@@ -142,7 +107,7 @@ def _add(key: Any, value: Any, target: Dict):
 
 
 def _is_special(key: str) -> bool:
-    return lbl.Special.has_value(key)
+    return Special.has_value(key)
 
 
 def _process_labels(
@@ -151,7 +116,7 @@ def _process_labels(
 ) -> Tuple[SYSTEM_TYPE, DICT_TYPE, DICT_TYPE]:
     text: str
     if isinstance(raw_labels, bytes):
-        text = str(raw_labels, encoding=lbl.encoding)
+        text = str(raw_labels, encoding=LABEL_ENCODING)
     else:
         text = raw_labels
     matcher = lbl_regex.finditer(text)
@@ -169,7 +134,7 @@ def _process_labels(
         tasks = dict()
 
     sub_dict: Optional[OBJECT_TYPE] = None
-    sub_target: Optional[lbl.Special] = None
+    sub_target: Optional[Special] = None
     sub_key: Optional[str] = None
 
     for match in matcher:
@@ -177,17 +142,17 @@ def _process_labels(
         value: str = match.group(lbl_regex_value)
         if _is_special(key):
             if sub_dict is not None:
-                if sub_target == lbl.Special.PROPERTY:
+                if sub_target == Special.PROPERTY:
                     _add(sub_key, sub_dict, properties)
-                elif sub_target == lbl.Special.TASK:
+                elif sub_target == Special.TASK:
                     _add(sub_key, sub_dict, tasks)
                 sub_dict, sub_target, sub_key = None, None, None
-            if key == lbl.Special.PROPERTY.value:
-                sub_target = lbl.Special.PROPERTY
-            elif key == lbl.Special.TASK.value:
-                sub_target = lbl.Special.TASK
+            if key == Special.PROPERTY.value:
+                sub_target = Special.PROPERTY
+            elif key == Special.TASK.value:
+                sub_target = Special.TASK
             sub_dict = dict()
-            sub_key = _process_value(value)
+            sub_key = _process_value(value, False)
         else:
             if sub_dict is None:
                 labels[_process_key(key)] = _process_value(value)
@@ -228,12 +193,12 @@ class __VicarReader:
     def __init__(self, labels: SYSTEM_TYPE):
         self.nbb: int = labels[VSL.NBB]
         self.recsize: int = labels[VSL.RECSIZE]
-        self.org: DataOrg = labels[VSL.ORG]
+        self.org: DataOrg = t.cast(DataOrg, labels[VSL.ORG])
         self.n1: int = labels[VSL.N1]
         self.n2: int = labels[VSL.N2]
         self.n3: int = labels[VSL.N3]
 
-        fmt: NumFormat = labels[VSL.FORMAT]
+        fmt: NumFormat = t.cast(NumFormat, labels[VSL.FORMAT])
         order: str
         if fmt in INT_FORMATS:
             order = labels[VSL.INTFMT].value[1]
@@ -242,9 +207,7 @@ class __VicarReader:
         else:
             order = "="
 
-        print(type(fmt))
-        datatype: np.dtype = fmt.value[3]
-        datatype = datatype.newbyteorder(order)
+        datatype: np.dtype = fmt.value[3].newbyteorder(order)
 
         self.dtype: np.dtype = datatype
         self.offset = labels[VSL.BEGLBLSIZE]
@@ -286,8 +249,9 @@ class __VicarReader:
         data = self._make_data_array()
         for n3 in range(0, self.n3):
             for n2 in range(0, self.n2):
-                nbb = file.read(self.nbb)
-                nbb_store.append(nbb)
+                if self.nbb != 0:
+                    nbb = file.read(self.nbb)
+                    nbb_store.append(nbb)
                 b = file.read(readsize)
                 data_row = np.ndarray([self.n1], dtype=self.dtype, buffer=b)
                 if self.org == DataOrg.BSQ:
