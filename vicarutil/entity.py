@@ -15,6 +15,9 @@ class BinaryPrefix:
 
 @dataclass(frozen=True)
 class Labels:
+    """
+    Represents various labels contained in Vicar files
+    """
     __slots__ = 'system', 'properties', 'tasks'
     system: SYSTEM_TYPE
     properties: Optional[DICT_TYPE]
@@ -50,10 +53,16 @@ class VicarImageConstraints:
 
 
 @dataclass(frozen=False)
-class VicarData:
+class VicarImage:
+    """
+    Represents a Vicar image file
+    """
     __slots__ = 'labels', 'properties', 'tasks', 'data', 'binary_header', 'binary_prefix', 'eol_labels'
     labels: Labels
     eol_labels: Labels
+    """
+    Data contained in the image, always in BSQ format when created
+    """
     data: Optional[np.ndarray]
     binary_header: bytes
     binary_prefix: BinaryPrefix

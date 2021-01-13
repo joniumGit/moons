@@ -95,19 +95,19 @@ class DataOrg(VicarEnum):
         BIP - Band Interleaved by Pixel (bands, samples, lines)
 
     Image(s):
-        - x: lines
-        - y: sample
-        - z: bands (images)
+        - B: bands (images)
+        - L: lines
+        - S: sample
 
-    Provide data order and representation (z, x, y):
-        BSQ - Image samples (y) for lines (x) in blocks, blocks are bands (images)
+    Provide data order and representation (B, L, S):
+        BSQ - Image samples (S) for lines (L) in blocks, blocks are bands (images)
             => (0,0,0) -> (0,0,1) -> (0,0,2) --> (1,0,0)
-        BIL - Image samples (y) for bands in blocks, blocks are lines (x)
-            => (0,0,0) -> (0,1,0) -> (0,2,0) --> (0,0,1)
-        BIP - Image bands for samples (y) in blocks, blocks are lines (x)
-            => (0,0,0) -> (1,0,0) -> (2,0,0) --> (0,0,1)
+        BIL - Image samples (S) for bands in blocks, blocks are lines (L)
+            => (0,0,0) -> (0,0,1) -> (0,0,2) --> (0,1,0)
+        BIP - Image bands for samples (S) in blocks, blocks are lines (L)
+            => (0,0,0) -> (1,0,0) -> (2,0,0) --> (0,1,0)
 
-    Numpy data array (z, x, y)
+    Numpy data array (B, L, S)
     """
     BSQ = 'BSQ'  # .                            N1 samples, N2 lines, N3 bands
     BIL = 'BIL'  # .                            N1 samples, N2 bands, N3 lines

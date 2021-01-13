@@ -1,10 +1,10 @@
-
 from typing import BinaryIO, List, cast
 import numpy as np
 
-from vicarutil.definitions.definitions import DataOrg, NumFormat, VSL, INT_FORMATS, FLOAT_FORMATS
-from vicarutil.definitions.types import SYSTEM_TYPE
-from vicarutil.entity import VicarImageConstraints
+from .definitions.definitions import DataOrg, NumFormat, VSL, INT_FORMATS, FLOAT_FORMATS
+from .definitions.types import SYSTEM_TYPE
+from .entity import VicarImageConstraints
+from .transforms import bip_to_bsq, bil_to_bsq
 
 
 def read_img(f: BinaryIO, offset: int, c: VicarImageConstraints) -> np.ndarray:
@@ -18,13 +18,10 @@ def read_img(f: BinaryIO, offset: int, c: VicarImageConstraints) -> np.ndarray:
         ] for _ in range(0, c.n3)
     ]
     base_arr: np.ndarray = np.asarray(data)
-    assert base_arr.dtype == dtype
-    assert base_arr.shape == (c.n3, c.n2, c.n1)
     if c.org == DataOrg.BIP:
-        base_arr = base_arr.swapaxes(0, 1)
+        base_arr = bip_to_bsq(base_arr)
     elif c.org == DataOrg.BIL:
-        base_arr = base_arr.swapaxes(0, 1)
-        base_arr = base_arr.swapaxes(0, 2)
+        base_arr = bil_to_bsq(base_arr)
     return base_arr
 
 

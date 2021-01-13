@@ -267,7 +267,7 @@ class __VicarReader:
 
 
 @_ensure_io
-def read_image(f: Union[str, BinaryIO]) -> VicarData:
+def read_image(f: Union[str, BinaryIO]) -> VicarImage:
     file: StrIO = StrIO(file=f)
     labels, properties, tasks = _process_labels(_read_labels(file))
 
@@ -292,7 +292,7 @@ def read_image(f: Union[str, BinaryIO]) -> VicarData:
     binary_header = _read_binary_header(file, labels)
     data, binary_prefix = __VicarReader(labels).commit(file.unwrap())
 
-    return VicarData(
+    return VicarImage(
         labels=labels,
         properties=properties,
         tasks=tasks,

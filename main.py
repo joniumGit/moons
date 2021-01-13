@@ -1,10 +1,13 @@
+import os
 import sys
-from typing import Dict
+from typing import Dict, Optional, cast
 
 import matplotlib.pyplot as plt
-import numpy as np
 import spiceypy as spice
-from astropy.visualization import simple_norm
+import statsmodels.api as sm
+from astropy.visualization import *
+from skimage.exposure import exposure
+from sklearn.preprocessing import PolynomialFeatures, normalize
 
 import vicarutil as vcr
 
@@ -23,7 +26,7 @@ def print_ver():
 
 bp = sys.argv[1]
 META_KERNEL = bp + '/kernels/mk/commons.tm'
-TEST_KERNEL = bp + '/kernels/mk/cas_2006_v26.tm'
+TEST_KERNEL = bp + "/kernels/mk/"
 
 if __name__ == '__main__':
     # Version
@@ -33,10 +36,10 @@ if __name__ == '__main__':
     # Testing kernel loading
     try:
         print("\n\nReading image")
-        _img_path: str = bp + '/test_image/N1533960372_1_CALIB.IMG'
+        _img_path: str = bp + '/test_image/W1853519736_1.IMG'
         img: np.ndarray
         kv: Dict
-        data: vcr.VicarData
+        data: vcr.VicarImage
         labels: vcr.Labels
 
         with open(_img_path, mode="rb") as f:
@@ -51,8 +54,12 @@ if __name__ == '__main__':
         print("\n\nLoading kernels")
         spice.furnsh(META_KERNEL)
         print("Loaded: " + META_KERNEL)
-        spice.furnsh(TEST_KERNEL)
-        print("Loaded: " + TEST_KERNEL)
+        year = labels.property('IDENTIFICATION')['IMAGE_TIME'][0:4]
+        for f in os.listdir(bp + "/kernels/mk"):
+            if year in f:
+                TEST_KERNEL += f
+                spice.furnsh(TEST_KERNEL)
+                print("Loaded: " + TEST_KERNEL)
 
         print("\n\nLoading body ids")
         # Get all body ids
@@ -119,8 +126,59 @@ if __name__ == '__main__':
         print("    Saturn: " + t_saturn.__str__())
 
         print("\n\nPlotting")
-        img: np.ndarray = data.data[0]
-        plt.imshow(img, norm=simple_norm(img, 'sqrt'), cmap="gray")
+
+        print("\n\nPlotting")
+        img: np.ndarray = data.data[0][1:-1, 1:-1]
+        img = img.astype("float64")
+        pimg: np.ndarray = img.copy()
+
+        arr: np.ndarray = np.arange(0, len(img), 1)
+
+        noproc = 0
+        if noproc:
+            pf = PolynomialFeatures(3).fit_transform(arr.copy().reshape(-1, 1))
+            params: Optional[np.ndarray] = None
+            for idx, i in enumerate(pimg):
+                res = sm.OLS(i, pf).fit()
+                if params is not None:
+                    params = (params + res.params) / 2
+                else:
+                    params = res.params
+            for idx, i in enumerate(pimg):
+                corr = -1 * np.polyval(params[::-1], arr)
+                corr = corr - np.min(corr)
+                pimg[idx] += corr
+            pimg = pimg.transpose().copy()
+            params: Optional[np.ndarray] = None
+            for idx, i in enumerate(pimg):
+                res = sm.OLS(i, pf).fit()
+                if params is not None:
+                    params = (params + res.params) / 2
+                else:
+                    params = res.params
+            for idx, i in enumerate(pimg):
+                corr = -1 * np.polyval(params[::-1], arr)
+                corr = corr - np.min(corr)
+                pimg[idx] += corr
+            pimg = pimg.transpose().copy()
+        pimg = normalize(pimg)
+        # pimg = exposure.equalize_hist(pimg, nbins=1000)
+        pl, ph = np.percentile(pimg, (4, 96))
+        pimg = cast(np.ndarray, exposure.rescale_intensity(pimg, in_range=(pl, ph)))
+        img = pimg
+
+        for i in np.arange(490, 550, 1):
+            x = arr[360:561]
+            y = pimg[360:561, i:i + 1]
+            pf = PolynomialFeatures(3).fit_transform(x.copy().reshape(-1, 1))
+            res = sm.WLS(y, pf).fit()
+            plt.plot(x, y)
+            plt.plot(x, np.polyval(res.params[::-1], x))
+        plt.show()
+
+        plt.imshow(img, norm=ImageNormalize(interval=ZScaleInterval(), stretch=HistEqStretch(pimg)), cmap="gray")
+        plt.show()
+        plt.imshow(img, cmap="gray")
         x = 630
         y = 550
         sun_coord = np.vstack([x, y]).ravel() + t_sun[:2] * 200
