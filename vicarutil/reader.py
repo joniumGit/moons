@@ -1,4 +1,4 @@
-from typing import BinaryIO
+from typing import BinaryIO, Union
 
 from .definitions.definitions import VSL
 from .entity import VicarImage, BinaryPrefix
@@ -6,12 +6,15 @@ from .image import constraint_from_labels, read_img, read_binary_prefix
 from .label import read_beg_labels, has_eol, read_eol_labels, read_binary_header
 
 
-def read_image(f: BinaryIO) -> VicarImage:
+def read_image(f: Union[str, BinaryIO]) -> VicarImage:
     """
     Reads all iage and label data from a Vicar file
     :param f: File to read
     :return: VicarData object
     """
+    if isinstance(f, str):
+        with open(f, "rb") as file:
+            return read_image(file)
     beg_lbl = read_beg_labels(f)
     end_lbl = None
     if has_eol(beg_lbl):
