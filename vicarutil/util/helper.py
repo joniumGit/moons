@@ -1,9 +1,18 @@
+"""
+Collection for helper classes and functions.
+"""
+
 from typing import BinaryIO
 
-from .definitions.definitions import LABEL_ENCODING
+from ..definitions.definitions import LABEL_ENCODING
 
 
 class StrIO:
+    """
+    Simple convenience class for reading from BinaryIO in LabelFormat.
+
+    Might not be that efficient though.
+    """
 
     def __init__(self, file: BinaryIO):
         self.file = file

@@ -1,3 +1,10 @@
+"""
+Definitions for different labels present in Vicar files.
+
+This is a collection for their values and types collected into enums.
+The reader will try to convert all the SystemLabels into other label types where applicable.
+"""
+
 from enum import Enum
 from typing import Type, Dict, List, Tuple, Optional, Set
 
@@ -8,6 +15,9 @@ LABEL_SEPARATOR = '='
 
 
 class VicarEnum(Enum):
+    """
+    Some stuff for cross linking this stuff
+    """
 
     @classmethod
     def has_value(cls, o) -> bool:
@@ -22,6 +32,9 @@ class VicarEnum(Enum):
 
 
 class VicarMultiEnum(VicarEnum):
+    """
+    Continuing the abuse of enums
+    """
 
     @classmethod
     def __fill_lookup(cls):
@@ -43,7 +56,7 @@ class VicarMultiEnum(VicarEnum):
         return cls.__member_lookup__[value]
 
 
-class NumFormat(VicarMultiEnum):
+class NumberFormat(VicarMultiEnum):
     """
     Vicar file number formats
 
@@ -64,8 +77,41 @@ class NumFormat(VicarMultiEnum):
     COMPLEX = 'COMPLEX', 8, 'f', np.dtype('complex64')  # . COMP, SPECIAL re(f) + im(f) Obsolete
 
 
-INT_FORMATS: Set[NumFormat] = {NumFormat.BYTE, NumFormat.HALF, NumFormat.FULL, NumFormat.WORD, NumFormat.LONG}
-FLOAT_FORMATS: Set[NumFormat] = {NumFormat.REAL, NumFormat.DOUB, NumFormat.COMP, NumFormat.COMPLEX}
+INT_FORMATS: Set[NumberFormat] = {
+    NumberFormat.BYTE,
+    NumberFormat.HALF,
+    NumberFormat.FULL,
+    NumberFormat.WORD,
+    NumberFormat.LONG
+}
+
+FLOAT_FORMATS: Set[NumberFormat] = {
+    NumberFormat.REAL,
+    NumberFormat.DOUB,
+    NumberFormat.COMP,
+    NumberFormat.COMPLEX
+}
+
+
+def isIntFormat(fmt: NumberFormat) -> bool:
+    """
+    Checks whether the provided NumberFormat is an IntFormat
+    """
+    return fmt in INT_FORMATS
+
+
+def isRealFormat(fmt: NumberFormat) -> bool:
+    """
+    Checks whether the provided NumberFormat is a RealFormat
+    """
+    return fmt in FLOAT_FORMATS
+
+
+def isFloatFormat(fmt: NumberFormat) -> bool:
+    """
+    Alias for isRealFormat
+    """
+    return fmt in FLOAT_FORMATS
 
 
 class DataType(VicarEnum):
@@ -116,7 +162,7 @@ class DataOrg(VicarEnum):
 
 class HostType(VicarEnum):
     """
-    Host types, not really useful
+    Host types, not really useful, prefer strings over these as not all are known
     """
     ALLIANT = 'ALLIANT'
     CRAY = 'CRAY'  # .                          Unimplemented standard
@@ -132,7 +178,7 @@ class HostType(VicarEnum):
     PC = 'PC_X86_64'
 
 
-class IFMT(VicarMultiEnum):
+class IntFormat(VicarMultiEnum):
     """
     Integer Endian settings in data
     """
@@ -140,7 +186,7 @@ class IFMT(VicarMultiEnum):
     LOW = 'LOW', '<'  # .                       low first Little-Endian
 
 
-class RFMT(VicarMultiEnum):
+class RealFormat(VicarMultiEnum):
     """
     Float bit order in data
 
@@ -151,12 +197,12 @@ class RFMT(VicarMultiEnum):
     VAX = 'VAX', ''  # .                        VAX format, double VAX D, only VAX-VMS NOT IMPLEMENTED
 
 
-class VSL(VicarMultiEnum):
+class SystemLabel(VicarMultiEnum):
     """
     System labels that define Vicar file properties
     """
     LBLSIZE = 'LBLSIZE', int  # .               Multiple of RECSIZE                 MANDATORY
-    FORMAT = 'FORMAT', NumFormat  # .           Format of data                      MANDATORY
+    FORMAT = 'FORMAT', NumberFormat  # .        Format of data                      MANDATORY
     TYPE = 'TYPE', DataType  # .                Data type                           default IMAGE
     BUFSIZ = 'BUFSIZ', int  # .                 Buffer size              (obsolete) default RECSIZE
     DIM = 'DIM', int  # .                       Data dimensions  (2 in old, but =3) SET 3
@@ -173,41 +219,42 @@ class VSL(VicarMultiEnum):
     NBB = 'NBB', int  # .                       Binary prefix                       default 0
     NLB = 'NLB', int  # .                       Binary header                       default 0
     HOST = 'HOST', HostType  # .                Host                         (doc)  default VAX-VMS
-    INTFMT = 'INTFMT', IFMT  # .                Integer format                      default LOW
-    REALFMT = 'REALFMT', RFMT  # .              Float format                        default VAX
+    INTFMT = 'INTFMT', IntFormat  # .           Integer format                      default LOW
+    REALFMT = 'REALFMT', RealFormat  # .        Float format                        default VAX
     BHOST = 'BHOST', HostType  # .              Binary host                  (doc)  default VAX-VMS
-    BINTFMT = 'BINTFMT', IFMT  # .              Binary Int format                   default LOW
-    BREALFMT = 'BREALFMT', RFMT  # .            Binary Float format                 default VAX
+    BINTFMT = 'BINTFMT', IntFormat  # .         Binary Int format                   default LOW
+    BREALFMT = 'BREALFMT', RealFormat  # .      Binary Float format                 default VAX
     BLTYPE = 'BLTYPE', str  # .                 Binary label/prefix host     (doc)  default \x00
-    EOLLBLSIZE = 'eol_labels', int  # .         Custom - Eol lbl size        (custom)
-    BEGLBLSIZE = 'beg_labels', int  # .         Custom - Eol lbl size        (custom)
 
     @staticmethod
     def fill_dims(labels: Dict):
+        """
+        Fills alternate dimension according to standard
+        """
         org: Optional[DataOrg] = None
         try:
-            org = labels[VSL.ORG]
+            org = labels[SystemLabel.ORG]
         except KeyError:
-            labels[VSL.ORG] = DataOrg.BSQ
-        defaults: Tuple[VSL, VSL, VSL]
+            labels[SystemLabel.ORG] = DataOrg.BSQ
+        defaults: Tuple[SystemLabel, SystemLabel, SystemLabel]
         if org == DataOrg.BIL:
-            defaults = (VSL.NS, VSL.NB, VSL.NL)
+            defaults = (SystemLabel.NS, SystemLabel.NB, SystemLabel.NL)
         elif org == DataOrg.BIP:
-            defaults = (VSL.NB, VSL.NS, VSL.NL)
+            defaults = (SystemLabel.NB, SystemLabel.NS, SystemLabel.NL)
         else:
-            defaults = (VSL.NS, VSL.NL, VSL.NB)
-        for i, m in enumerate((VSL.N1, VSL.N2, VSL.N3)):
+            defaults = (SystemLabel.NS, SystemLabel.NL, SystemLabel.NB)
+        for i, m in enumerate((SystemLabel.N1, SystemLabel.N2, SystemLabel.N3)):
             if m not in labels:
                 labels[m] = defaults[i]
-        if VSL.N4 not in labels:
-            labels[VSL.N4] = 0
-        if VSL.NBB not in labels:
-            labels[VSL.NBB] = 0
-        if VSL.NLB not in labels:
-            labels[VSL.NLB] = 0
+        if SystemLabel.N4 not in labels:
+            labels[SystemLabel.N4] = 0
+        if SystemLabel.NBB not in labels:
+            labels[SystemLabel.NBB] = 0
+        if SystemLabel.NLB not in labels:
+            labels[SystemLabel.NLB] = 0
 
 
-class Special(VicarEnum):
+class SpecialLabel(VicarEnum):
     """
     Markers for special sections in file labels
     """
@@ -216,11 +263,14 @@ class Special(VicarEnum):
 
 
 SYSTEM_CLASS_LIST: List[Type[VicarEnum]] = [
-    NumFormat,
+    NumberFormat,
     DataType,
     DataOrg,
-    #  HostType, this is not used and not all values are known
-    IFMT,
-    RFMT,
-    VSL
+    IntFormat,
+    RealFormat,
+    SystemLabel
 ]
+
+
+def getSystemTypes() -> List[Type[VicarEnum]]:
+    return SYSTEM_CLASS_LIST
