@@ -33,7 +33,7 @@ def run():
         st: Optional[BaseStretch] = None
         try:
             st = get_stretch(o, vd.data[0])
-        except Exception as e:
+        except Exception:
             pass
         if st is not None:
             im.imshow(
@@ -47,6 +47,7 @@ def run():
                 cmap="gray",
                 norm=ImageNormalize(interval=ZScaleInterval())
             )
+        im.invert_yaxis()
         canvas.draw()
 
     def on_closing():
