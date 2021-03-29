@@ -1,5 +1,8 @@
-kernels
-venv
-**/*.DS_Store
-**/__pycache__
-.idea
+kernels/
+venv/
+**/*.DS_Store/
+**/__pycache__/
+.idea/
+.pytest_cache/
+*egg-info/
+doc/
