@@ -1,4 +1,4 @@
-from vicarutil.util.transforms import *
+from vicarutil.image.util.transforms import *
 
 # BSQ
 bsq: np.ndarray = np.asarray([

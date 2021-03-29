@@ -3,10 +3,10 @@ from tkinter import messagebox
 from typing import Optional
 
 import matplotlib.pyplot as plt
-from astropy.visualization import ImageNormalize, ZScaleInterval, HistEqStretch, BaseStretch
+from astropy.visualization import ImageNormalize, ZScaleInterval, BaseStretch
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-import vicarutil as vu
+from vicarutil import image as vu
 from filelist import FileList
 from vicarui.stretch.stretchers import make_panel, get_stretch
 

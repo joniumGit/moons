@@ -76,7 +76,7 @@ class VicarImage:
     """
     Represents a Vicar image file
     """
-    __slots__ = 'labels', 'properties', 'tasks', 'data', 'binary_header', 'binary_prefix', 'eol_labels'
+    __slots__ = 'labels', 'properties', 'tasks', 'data', 'binary_header', 'binary_prefix', 'eol_labels', 'name'
     labels: Labels
     """
     Labels at the beginning of the file
@@ -103,6 +103,10 @@ class VicarImage:
     Binary prefix
     
     Not processed.
+    """
+    name: str
+    """
+    Filename
     """
 
     def has_data(self):

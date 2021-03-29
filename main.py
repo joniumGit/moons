@@ -6,10 +6,12 @@ import matplotlib.pyplot as plt
 import spiceypy as spice
 import statsmodels.api as sm
 from astropy.visualization import *
+from matplotlib.figure import Figure
+from mpl_toolkits.mplot3d import Axes3D
 from skimage.exposure import exposure
 from sklearn.preprocessing import PolynomialFeatures, normalize
 
-import vicarutil as vcr
+from vicarutil import image as vcr
 
 BODY = 'ENCELADUS'
 CASSINI = 'CASSINI'
@@ -29,6 +31,7 @@ META_KERNEL = bp + '/kernels/mk/commons.tm'
 TEST_KERNEL = bp + "/kernels/mk/"
 
 if __name__ == '__main__':
+    plt.switch_backend("TkAgg")
     # Version
     print("_____SPICE_____")
     print_ver()
@@ -36,14 +39,13 @@ if __name__ == '__main__':
     # Testing kernel loading
     try:
         print("\n\nReading image")
-        _img_path: str = bp + '/test_image/W1853519736_1.IMG'
+        _img_path: str = bp + '/test_image/N1533960372_1_CALIB.IMG'
         img: np.ndarray
         kv: Dict
         data: vcr.VicarImage
         labels: vcr.Labels
 
-        with open(_img_path, mode="rb") as f:
-            data = vcr.read_image(f)
+        data = vcr.read_image(_img_path)
 
         print("\n\n--IMAGE DATA--")
         labels = data.labels
@@ -134,7 +136,7 @@ if __name__ == '__main__':
 
         arr: np.ndarray = np.arange(0, len(img), 1)
 
-        noproc = 0
+        noproc = 1
         if noproc:
             pf = PolynomialFeatures(3).fit_transform(arr.copy().reshape(-1, 1))
             params: Optional[np.ndarray] = None
@@ -170,14 +172,31 @@ if __name__ == '__main__':
         for i in np.arange(490, 550, 1):
             x = arr[360:561]
             y = pimg[360:561, i:i + 1]
-            pf = PolynomialFeatures(3).fit_transform(x.copy().reshape(-1, 1))
+            pf = PolynomialFeatures(2).fit_transform(x.copy().reshape(-1, 1))
             res = sm.WLS(y, pf).fit()
-            plt.plot(x, y)
+            plt.scatter(x, y, s=4, c="b")
             plt.plot(x, np.polyval(res.params[::-1], x))
         plt.show()
 
-        plt.imshow(img, norm=ImageNormalize(interval=ZScaleInterval(), stretch=HistEqStretch(pimg)), cmap="gray")
+        fig: Figure = plt.figure()
+
+        X, Y = np.meshgrid(np.arange(0, 1022, 1), np.arange(0, 1022, 1))
+        ax: Axes3D = fig.add_subplot(132, projection='3d')
+        ax.plot_surface(X, Y, img)
+        ax.invert_yaxis()
+        ax1: Axes3D = fig.add_subplot(131, projection='3d')
+        X, Y = np.meshgrid(np.arange(0, 1024, 1), np.arange(0, 1024, 1))
+        ax1.plot_surface(X, Y, data.data[0])
+        ax1.invert_yaxis()
+
+        ax2 = fig.add_subplot(133)
+        ax2.set_title("Background Subtracted")
+        ax2.imshow(img, norm=ImageNormalize(interval=ZScaleInterval(), stretch=HistEqStretch(pimg)), cmap="gray")
+        ax2.invert_yaxis()
+        plt.tight_layout()
         plt.show()
+
+
         plt.imshow(img, cmap="gray")
         x = 630
         y = 550
