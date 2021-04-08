@@ -22,6 +22,7 @@ setuptools.setup(
         "matplotlib",
         "vicarutil",
         "astropy",
+        "numpy",
         "scikit-image",
         "scikit-learn"
 

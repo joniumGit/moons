@@ -1,12 +1,13 @@
+import asyncio as aio
 from os import PathLike
 from pathlib import Path
 from typing import Dict, List, Union
 
-from .logging import invoke_safe_or_default, invoke_safe
 from .filetype import FileType
+from .logging import aio_invoke_safe_or_default, aio_invoke_safe, warn, aio_timed
 
-
-@invoke_safe_or_default(default=dict())
+@aio_timed
+@aio_invoke_safe_or_default(default=dict())
 async def scan(d: Union[str, PathLike]) -> Dict[FileType, List[Path]]:
     if d is not None:
         d = Path(d)
@@ -14,14 +15,17 @@ async def scan(d: Union[str, PathLike]) -> Dict[FileType, List[Path]]:
         for t in FileType:
             files[t] = list()
         dirs: List[Path] = [d]
-        await scan_dir(d, dirs)
-        for p in dirs:
-            await scan_files(p, files)
-        return files
+        try:
+            await aio.wait_for(scan_dir(d, dirs), 3)
+            for p in dirs:
+                await aio.wait_for(scan_files(p, files), 3)
+            return files
+        except aio.TimeoutError:
+            warn("Files search timed out for path %s", str(d))
     return dict()
 
 
-@invoke_safe
+@aio_invoke_safe
 async def scan_files(d: Path, files: Dict[FileType, List[Path]]):
     for f in d.iterdir():
         if f.is_file():
@@ -30,9 +34,26 @@ async def scan_files(d: Path, files: Dict[FileType, List[Path]]):
                     files[key].append(f)
 
 
-@invoke_safe
+@aio_invoke_safe
 async def scan_dir(d: Path, dirs: List[Path]):
-    for x in d.iterdir():
-        if x.is_dir():
-            await scan_dir(x, dirs)
-            dirs.append(x)
+    children = list()
+
+    def safe_iter(o):
+        try:
+            yield from o
+        except PermissionError:
+            yield from o
+
+    try:
+        for x in safe_iter(d.iterdir()):
+            try:
+                if x.is_dir():
+                    children.append(aio.create_task(scan_dir(x, dirs)))
+                    dirs.append(x)
+            except PermissionError:
+                pass
+    except Exception as e:
+        for c in children:
+            c.cancel()
+        raise e
+    await aio.gather(*children)

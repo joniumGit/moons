@@ -8,7 +8,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 from vicarutil import image as vu
 from filelist import FileList
-from .stretchers import make_panel, get_stretch
+from stretchers import make_panel, get_stretch
 
 
 def _print():

@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 import numpy as np
 import spiceypy as spice
@@ -55,24 +55,48 @@ def release_kernels():
         log.critical("Failed to unload kernel!", exc_info=e)
 
 
-def br_reduction(image: VicarImage) -> np.ndarray:
-    from sklearn.preprocessing import PolynomialFeatures
-    import statsmodels.api as sm
-    image_data: np.ndarray = image.data[0]
-    tmp: np.ndarray = image_data.copy()
-    x = np.arange(0, tmp.shape[0], 1)
-    y = np.arange(0, tmp.shape[1], 1)
-    rows = PolynomialFeatures(2).fit_transform(x.reshape(-1, 1))
-    cols = PolynomialFeatures(2).fit_transform(y.reshape(-1, 1))
-    minus = np.zeros(tmp.shape)
-    res = sm.OLS(np.average(tmp, axis=1), rows).fit()
-    for i in x:
-        np.add(minus[i], np.polyval(res.params[::-1], x), minus[i])
-    res = sm.OLS(np.average(tmp.T, axis=1), cols).fit()
-    for i in y:
-        np.add(minus.T[i], np.polyval(res.params[::-1], y), minus.T[i])
+def br_reduction(image: VicarImage) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Background reduction for image, also normalizes image data
+
+    Parameters
+    ----------
+    image : VicarImage
+            Image instance
+
+    Returns
+    -------
+    data : tuple
+           (Image data with reduced background, Reduction)
+    """
+
+    import numpy.polynomial.polynomial as poly
+
+    img: np.ndarray = image.data[0].copy()[3:-2, 3:-2]
+    indices = list()
+    for _i, line in enumerate(img):
+        if np.isclose(np.average(line), line[0]):
+            indices.append(_i)
+    img = np.delete(img, indices, axis=0)
+
+    def reduction(arr: np.ndarray, mask: np.ndarray):
+        r = np.arange(0, len(arr))
+        averages = np.average(arr, axis=1)
+        f = poly.polyval(r, poly.polyfit(r, averages, 3))
+        for i in r:
+            np.add(mask[i], f[i], mask[i])
+
+    minus = np.zeros(img.shape)
+
+    reduction(img, minus)
+    reduction(img.T, minus.T)
+
     minus = minus / 2
-    return image_data - minus
+
+    img = img - minus
+    img = (img - np.min(img)) * 1 / (np.max(img) - np.min(img))
+
+    return img, minus
 
 
 def set_info(image: VicarImage, axes=None) -> Optional[str]:
@@ -138,7 +162,6 @@ def set_info(image: VicarImage, axes=None) -> Optional[str]:
                 sun_coord = np.vstack([x, y]).ravel() + t_sun[:2] * 100
                 saturn_coord = np.vstack([x, y]).ravel() + t_saturn[:2] * 100
 
-                ax.set_title(title)
                 ax.plot((x, sun_coord[0]), (y, sun_coord[1]), label="Sun", color="r")
                 ax.plot((x, saturn_coord[0]), (y, saturn_coord[1]), label="Saturn", color="y")
 
@@ -156,7 +179,6 @@ def set_info(image: VicarImage, axes=None) -> Optional[str]:
                 ax.plot((x, sun_coord[0]), (y, sun_coord[1]), color="g")
 
                 log.debug(f"Target pos: {x},{y}")
-                return None
             except ImportError as e:
                 log.exception("No matplotlib", exc_info=e)
             except Exception as e:
