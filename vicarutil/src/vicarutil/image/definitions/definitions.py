@@ -4,7 +4,6 @@ Definitions for different labels present in Vicar files.
 This is a collection for their values and types collected into enums.
 The reader will try to convert all the SystemLabels into other label types where applicable.
 """
-
 from enum import Enum
 from typing import Type, Dict, List, Tuple, Optional, Set
 
@@ -30,6 +29,12 @@ class VicarEnum(Enum):
         else:
             return None
 
+    def __repr__(self):
+        return f'{self.value}'
+
+    def __str__(self):
+        return self.__repr__()
+
 
 class VicarMultiEnum(VicarEnum):
     """
@@ -54,6 +59,9 @@ class VicarMultiEnum(VicarEnum):
     def map2member(cls, value: str):
         cls.__fill_lookup()
         return cls.__member_lookup__[value]
+
+    def __repr__(self):
+        return f'{self.value[0]}'
 
 
 class NumberFormat(VicarMultiEnum):

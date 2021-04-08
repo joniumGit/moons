@@ -7,8 +7,10 @@ from matplotlib.axes import Axes
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavBar
 from matplotlib.figure import Figure
-
+from vicarutil.analysis import set_info, br_reduction
 from vicarutil.image import VicarImage, read_image
+
+from ..support import logging as log
 
 
 class FigureWrapper(FigureCanvasQTAgg):
@@ -24,10 +26,15 @@ class FigureWrapper(FigureCanvasQTAgg):
         self.axes: Axes = self.fig.add_subplot(111)
         self.axes.invert_yaxis()
 
-    def show_image(self, image: VicarImage):
-        self.axes.imshow(image.data[0],
-                         norm=ImageNormalize(interval=ZScaleInterval(), stretch=HistEqStretch(image.data[0])),
-                         cmap="gray")
+    def show_image(self, data):
+        self.axes.imshow(
+            data,
+            norm=ImageNormalize(
+                interval=ZScaleInterval(),
+                stretch=HistEqStretch(data)
+            ),
+            cmap="gray"
+        )
         self.axes.invert_yaxis()
         self.draw()
 
@@ -54,7 +61,12 @@ class PlotWidget(qt.QWidget):
 
     def show_image(self, image: VicarImage):
         self.fig.clear()
-        self.fig.show_image(image)
+        try:
+            set_info(image, axes=self.fig.axes)
+        except Exception as e:
+            log.exception("Failed to set info", exc_info=e)
+        self.fig.show_image(br_reduction(image))
+        # self.fig.show_image(image.data[0])
 
     def init_vicar_callback(self) -> Callable[[Path], None]:
         return lambda p: self.show_image(read_image(p))

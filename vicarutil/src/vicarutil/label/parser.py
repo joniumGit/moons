@@ -3,6 +3,8 @@ from enum import Enum
 
 class Token(Enum):
     LINK = '^'
+    COMMENT_START = r'/*'
+    COMMENT_END = r'*/'
 
 
 class Words(Enum):

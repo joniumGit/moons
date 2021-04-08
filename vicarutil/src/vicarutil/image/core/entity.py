@@ -54,6 +54,30 @@ class Labels:
         """True if this file has any Tasks (VICAR)"""
         return self.tasks is not None
 
+    def __repr__(self):
+        import json
+        simple = {}
+        for k in self.system:
+            o: object
+            if isinstance(self.system[k], VicarEnum):
+                o = self.system[k].__repr__()
+            else:
+                o = self.system[k]
+            simple[k.__repr__()] = o
+        return (
+                '{\n'
+                + f'    "SYSTEM": {json.dumps(simple, indent=8)},\n'.rsplit('}', maxsplit=1)[0]
+                + "    },\n"
+                + f'    "PROPERTIES": {json.dumps(self.properties, indent=8)},\n'.rsplit('}', maxsplit=1)[0]
+                + "    },\n"
+                + f'    "TASKS": {json.dumps(self.tasks, indent=8)}'.rsplit('}', maxsplit=1)[0]
+                + "    }\n"
+                  '}'
+        )
+
+    def __str__(self):
+        return self.__repr__()
+
 
 @dataclass(frozen=True)
 class VicarImageConstraints:
@@ -81,7 +105,7 @@ class VicarImage:
     """
     Labels at the beginning of the file
     """
-    eol_labels: Labels
+    eol_labels: Optional[Labels]
     """
     EOL labels if they are present in the file
     """

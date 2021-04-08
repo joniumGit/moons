@@ -27,7 +27,7 @@ def log_object(o: Any, message: str = "Object information: %s") -> None:
 
 
 def __init():
-    fmt = logging.Formatter('[{name:s}:{asctime:s}] {levelname:<8s} - {message:s}', style='{')
+    fmt = logging.Formatter('{asctime:s}|{levelname:<8s}|{name:<20s}|{message:s}', style='{')
     _logger.setLevel(logging.INFO)
     _logger.propagate = 0
 

@@ -21,17 +21,30 @@ def get_parser() -> Optional[ArgumentParser]:
         help='Increase output verbosity',
         action='store_true'
     )
+    parser.add_argument(
+        "--kernel-path",
+        metavar="PATH",
+        dest="kernels",
+        nargs=1,
+        help="Kernel base path",
+        type=str
+    )
     return parser
 
 
 def init() -> None:
     parser = get_parser()
     if parser is not None:
-        args = parser.parse_args()
+        args, _ = parser.parse_known_args()
         if args.verbose:
             global pr
             pr = profile.Profile(builtins=False)
             pr.enable()
+        if args.kernels is not None:
+            import vicarutil.analysis as anal
+            info("Setting kernel path to: " + args.kernels.__repr__())
+            anal.provide_kernels(args.kernels[0])
+
     debug("Setting Matplotlib backend")
     matplotlib.use("Qt5Agg")
 

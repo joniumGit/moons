@@ -1,7 +1,7 @@
 import logging
 import sys
 
-_fmt = logging.Formatter('[{name:s}:{asctime:s}] {levelname:<8s} - {message:s}', style='{')
+_fmt = logging.Formatter('{asctime:s}|{levelname:<8s}|{name:<20s}|{message:s}', style='{')
 
 
 class __CustomFilter(logging.Filter):

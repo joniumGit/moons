@@ -21,7 +21,7 @@ setuptools.setup(
         "numpy"
     ],
     extras_require={
-        "spice": ["spiceypy"]
+        "spice": ["spiceypy", "matplotlib"]
     },
     package_dir={"": "src"},
     packages=setuptools.find_packages(where="src"),

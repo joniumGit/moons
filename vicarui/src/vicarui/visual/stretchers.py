@@ -28,13 +28,13 @@ class Fill(Enum):
 
 class GridConstraints:
     """Layout for grid"""
-    fill: Optional[Fill]
-    anchor: Optional[Dir]
-    spanx: int = 0
-    spany: int = 0
-    col: int = 0
-    row: int = 0
-    padx: int = 0
+    var_fill: Optional[Fill]
+    var_anchor: Optional[Dir]
+    var_spanx: int = 0
+    var_spany: int = 0
+    var_col: int = 0
+    var_row: int = 0
+    var_padx: int = 0
 
     def __init__(
             self,
@@ -47,77 +47,77 @@ class GridConstraints:
             padx: int = 0
     ) -> None:
         super().__init__()
-        self.fill = fill
-        self.anchor = anchor
-        self.spanx = spanx
-        self.spany = spany
-        self.col = col
-        self.row = row
-        self.padx = padx
+        self.var_fill = fill
+        self.var_anchor = anchor
+        self.var_spanx = spanx
+        self.var_spany = spany
+        self.var_col = col
+        self.var_row = row
+        self.var_padx = padx
 
     def spanx(self, width: int) -> 'GridConstraints':
-        self.spanx = width
+        self.var_spanx = width
         return self
 
     def spany(self, height: int) -> 'GridConstraints':
-        self.spany = height
+        self.var_spany = height
         return self
 
     def col(self, column: int) -> 'GridConstraints':
-        self.col = column
+        self.var_col = column
         return self
 
     def row(self, row: int) -> 'GridConstraints':
-        self.row = row
+        self.var_row = row
         return self
 
     def next_row(self):
-        self.row += 1
+        self.var_row += 1
 
     def next_column(self):
-        self.col += 1
+        self.var_col += 1
 
     def fill(self, fill: Fill) -> 'GridConstraints':
-        self.fill = fill
+        self.var_fill = fill
         return self
 
     def padx(self, pad: int) -> 'GridConstraints':
-        self.padx = pad
+        self.var_padx = pad
         return self
 
     def get(self) -> Dict[str, Any]:
         """Get defined values as a dict to spread for grid function"""
         values = dict()
         sticky = ""
-        if self.fill == Fill.Y:
+        if self.var_fill == Fill.Y:
             sticky += "ns"
-            if self.anchor == Dir.EAST or self.anchor == Dir.WEST:
-                sticky += self.anchor
-            elif self.anchor == Dir.NORTHEAST or Dir.SOUTHEAST:
+            if self.var_anchor == Dir.EAST or self.var_anchor == Dir.WEST:
+                sticky += self.var_anchor
+            elif self.var_anchor == Dir.NORTHEAST or Dir.SOUTHEAST:
                 sticky += Dir.EAST.value
-            elif self.anchor == Dir.NORTHWEST or Dir.SOUTHWEST:
+            elif self.var_anchor == Dir.NORTHWEST or Dir.SOUTHWEST:
                 sticky += Dir.WEST.value
-        elif self.fill == Fill.X:
-            if self.anchor == Dir.NORTH or self.anchor == Dir.SOUTH:
-                sticky += self.anchor
-            elif self.anchor == Dir.NORTHEAST or Dir.NORTHWEST:
+        elif self.var_fill == Fill.X:
+            if self.var_anchor == Dir.NORTH or self.var_anchor == Dir.SOUTH:
+                sticky += self.var_anchor
+            elif self.var_anchor == Dir.NORTHEAST or Dir.NORTHWEST:
                 sticky += Dir.NORTH.value
-            elif self.anchor == Dir.SOUTHEAST or Dir.SOUTHWEST:
+            elif self.var_anchor == Dir.SOUTHEAST or Dir.SOUTHWEST:
                 sticky += Dir.SOUTH.value
             sticky += "ew"
-        elif self.fill == Fill.BOTH:
+        elif self.var_fill == Fill.BOTH:
             sticky += "nsew"
-        if sticky == "" and self.anchor is not None:
-            sticky += self.anchor.value
+        if sticky == "" and self.var_anchor is not None:
+            sticky += self.var_anchor.value
         values["sticky"] = sticky
-        if self.spanx != 0:
-            values["columnspan"] = self.spanx
-        if self.spany != 0:
-            values["rowspan"] = self.spany
-        if self.padx != 0:
-            values["padx"] = self.padx
-        values["column"] = self.col
-        values["row"] = self.row
+        if self.var_spanx != 0:
+            values["columnspan"] = self.var_spanx
+        if self.var_spany != 0:
+            values["rowspan"] = self.var_spany
+        if self.var_padx != 0:
+            values["padx"] = self.var_padx
+        values["column"] = self.var_col
+        values["row"] = self.var_row
         return values
 
 
