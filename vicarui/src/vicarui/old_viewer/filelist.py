@@ -38,7 +38,10 @@ class FileList(tk.Frame):
         self.grid_rowconfigure(4, weight=1)
 
     def __select(self):
-        _dir = askdirectory(initialdir=sys.argv[0][0:sys.argv[0].rindex('/')])
+        try:
+            _dir = askdirectory(initialdir=sys.argv[0][0:sys.argv[0].rindex('/')])
+        except ValueError:
+            _dir = askdirectory(initialdir=sys.argv[0])
         if _dir == '':
             return
         self.__current_dir = _dir

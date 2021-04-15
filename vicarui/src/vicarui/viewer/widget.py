@@ -2,12 +2,12 @@ import asyncio
 from pathlib import Path
 from typing import Callable, Optional
 
+from PySide2 import QtCore as qt_core
 from PySide2 import QtWidgets as qt
-from PySide2.QtCore import Qt as qt_core
 
+from . import NW, C
 from .imagewidget import PlotWidget
 from .model import FileModel, FileType
-from . import NW, C
 from ..support import scan, debug, invoke_safe
 
 
@@ -17,8 +17,8 @@ class PathItem(qt.QListWidgetItem):
     def __init__(self, path: Path, *args, **kwargs):
         super(PathItem, self).__init__(*args, **kwargs)
         self.setText(path.name)
-        self.setForeground(qt_core.black)
-        self.setBackground(qt_core.white)
+        self.setForeground(qt_core.Qt.black)
+        self.setBackground(qt_core.Qt.white)
         self.path = path
 
     def get_path(self) -> Path:
@@ -50,8 +50,8 @@ class FileListWidget(qt.QWidget):
         lst = qt.QListWidget()
         lst.setMinimumWidth(FileListWidget.min_width)
         lst.setMaximumWidth(FileListWidget.max_width)
-        lst.setMinimumHeight(FileListWidget.list_height)
-        lst.setMaximumHeight(FileListWidget.list_height)
+        lst.setMinimumHeight(FileListWidget.list_height * 2)
+        # lst.setMaximumHeight(FileListWidget.list_height)
         return lst
 
     @staticmethod
@@ -66,64 +66,71 @@ class FileListWidget(qt.QWidget):
         return qt.QSpacerItem(
             FileListWidget.min_width,
             2,
-            hData=qt.QSizePolicy.Maximum,
-            vData=qt.QSizePolicy.Minimum
+            hData=qt.QSizePolicy.Policy.Expanding,
+            vData=qt.QSizePolicy.Policy.Minimum
         )
 
     def __create_ui(self):
         layout = qt.QVBoxLayout()
+        self.setLayout(layout)
+
         load_btn = qt.QPushButton(text="Load files")
         select_btn = qt.QPushButton(text="Show")
+        clear_btn = qt.QPushButton(text="Clear")
+
         img_text = qt.QLabel(text="Image files")
-        lbl_text = qt.QLabel(text="Label files")
-        lbl_list = FileListWidget.__init_list()
+        # lbl_text = qt.QLabel(text="Label files")
+        # lbl_list = FileListWidget.__init_list()
         img_list = FileListWidget.__init_list()
 
         FileListWidget.__set_small_defaults(select_btn)
         FileListWidget.__set_small_defaults(load_btn)
+        FileListWidget.__set_small_defaults(clear_btn)
         FileListWidget.__set_small_defaults(img_text)
-        FileListWidget.__set_small_defaults(lbl_text)
+        # FileListWidget.__set_small_defaults(lbl_text)
 
         layout.addWidget(img_text, alignment=NW)
         layout.addWidget(img_list, alignment=NW)
+
         layout.addSpacerItem(FileListWidget.__create_spacer())
-        layout.addWidget(lbl_text, alignment=NW)
-        layout.addWidget(lbl_list, alignment=NW)
-        layout.addSpacerItem(FileListWidget.__create_spacer())
+        # layout.addWidget(lbl_text, alignment=NW)
+        # layout.addWidget(lbl_list, alignment=NW)
+        # layout.addSpacerItem(FileListWidget.__create_spacer())
         layout.addWidget(load_btn, alignment=C)
+        layout.addWidget(clear_btn, alignment=C)
         layout.addWidget(select_btn, alignment=C)
         layout.addStretch()
 
         select_btn.clicked.connect(self.show_file)
         load_btn.clicked.connect(self.pick_dir)
-        img_list.clicked.connect(lbl_list.clearSelection)
-        lbl_list.clicked.connect(img_list.clearSelection)
+        # img_list.clicked.connect(lbl_list.clearSelection)
+        # lbl_list.clicked.connect(img_list.clearSelection)
 
         self.model.set_callback(FileType.IMAGE, lambda x: img_list.addItem(PathItem(x)))
-        self.model.set_callback(FileType.LABEL, lambda x: lbl_list.addItem(PathItem(x)))
+        # self.model.set_callback(FileType.LABEL, lambda x: lbl_list.addItem(PathItem(x)))
         self.model.set_clear_callback(self.clear)
+        clear_btn.clicked.connect(self.clear)
 
         self.select_btn = select_btn
         self.load_btn = load_btn
-        self.lbl_list = lbl_list
+        # self.lbl_list = lbl_list
         self.img_list = img_list
-        self.setLayout(layout)
 
     @invoke_safe
     def show_file(self):
         selected_img = self.img_list.selectedItems()
-        selected_lbl = self.lbl_list.selectedItems()
+        # selected_lbl = self.lbl_list.selectedItems()
         if self.im_show is not None and selected_img is not None and len(selected_img) > 0:
             self.im_show(selected_img[0].path)
             debug("Image selected: %s", str(selected_img[0].path))
-        if self.lbl_show is not None and selected_lbl is not None and len(selected_lbl) > 0:
-            self.lbl_show(selected_lbl[0].path)
-            debug("Label selected: %s", str(selected_lbl[0].path))
+        # if self.lbl_show is not None and selected_lbl is not None and len(selected_lbl) > 0:
+        #     self.lbl_show(selected_lbl[0].path)
+        #     debug("Label selected: %s", str(selected_lbl[0].path))
 
     @invoke_safe
     def clear(self):
         debug("Clearing lists")
-        self.lbl_list.clear()
+        # self.lbl_list.clear()
         self.img_list.clear()
 
     @invoke_safe

@@ -5,10 +5,10 @@ from typing import Optional
 import matplotlib.pyplot as plt
 from astropy.visualization import ImageNormalize, ZScaleInterval, BaseStretch
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-
 from vicarutil import image as vu
-from filelist import FileList
-from stretchers import make_panel, get_stretch
+
+from .filelist import FileList
+from .stretchers import make_panel, get_stretch
 
 
 def _print():
@@ -72,9 +72,3 @@ def run():
 
     root.protocol("WM_DELETE_WINDOW", on_closing)
     root.mainloop()
-
-
-if __name__ == '__main__':
-    import cProfile
-
-    cProfile.run('run()')
