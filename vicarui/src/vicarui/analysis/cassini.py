@@ -5,7 +5,7 @@ import numpy as np
 import spiceypy as spice
 
 from .internal import log
-from ..image import VicarImage
+from vicarutil.image import VicarImage
 
 META_KERNEL: str
 KERNEL_BASE: str

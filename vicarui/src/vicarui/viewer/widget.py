@@ -66,7 +66,7 @@ class FileListWidget(qt.QWidget):
         return qt.QSpacerItem(
             FileListWidget.min_width,
             2,
-            hData=qt.QSizePolicy.Policy.Expanding,
+            hData=qt.QSizePolicy.Policy.Minimum,
             vData=qt.QSizePolicy.Policy.Minimum
         )
 

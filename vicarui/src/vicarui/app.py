@@ -57,7 +57,7 @@ def init(ns: Namespace = None) -> None:
         pr = profile.Profile(builtins=False)
         pr.enable()
     if args.kernels is not None:
-        import vicarutil.analysis as anal
+        from .import analysis as anal
         info("Setting kernel path to: " + args.kernels.__repr__())
         anal.provide_kernels(args.kernels[0])
 

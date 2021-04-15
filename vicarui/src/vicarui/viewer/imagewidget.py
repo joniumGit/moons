@@ -9,7 +9,7 @@ from matplotlib.backend_bases import MouseEvent, MouseButton
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavBar
 from matplotlib.figure import Figure
-from vicarutil.analysis import set_info, br_reduction
+from ..analysis import set_info, br_reduction
 from vicarutil.image import VicarImage, read_image
 
 from ..support import logging as log
