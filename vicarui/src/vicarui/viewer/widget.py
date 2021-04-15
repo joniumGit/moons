@@ -49,17 +49,16 @@ class FileListWidget(qt.QWidget):
     def __init_list() -> qt.QListWidget:
         lst = qt.QListWidget()
         lst.setMinimumWidth(FileListWidget.min_width)
-        lst.setMaximumWidth(FileListWidget.max_width)
         lst.setMinimumHeight(FileListWidget.list_height * 2)
         # lst.setMaximumHeight(FileListWidget.list_height)
+        lst.setSizePolicy(qt.QSizePolicy.MinimumExpanding, qt.QSizePolicy.Expanding)
         return lst
 
     @staticmethod
     def __set_small_defaults(o: qt.QWidget) -> None:
-        o.setMinimumWidth(FileListWidget.min_width)
-        o.setMaximumWidth(FileListWidget.max_width)
-        o.setMinimumHeight(25)
-        o.setMaximumHeight(25)
+        o.setFixedWidth(FileListWidget.max_width)
+        o.setFixedHeight(25)
+        o.setSizePolicy(qt.QSizePolicy.Minimum, qt.QSizePolicy.Minimum)
 
     @staticmethod
     def __create_spacer() -> qt.QSpacerItem:
@@ -72,6 +71,8 @@ class FileListWidget(qt.QWidget):
 
     def __create_ui(self):
         layout = qt.QVBoxLayout()
+        layout.setSpacing(2)
+
         self.setLayout(layout)
 
         load_btn = qt.QPushButton(text="Load files")
@@ -89,8 +90,8 @@ class FileListWidget(qt.QWidget):
         FileListWidget.__set_small_defaults(img_text)
         # FileListWidget.__set_small_defaults(lbl_text)
 
-        layout.addWidget(img_text, alignment=NW)
-        layout.addWidget(img_list, alignment=NW)
+        layout.addWidget(img_text)
+        layout.addWidget(img_list)
 
         layout.addSpacerItem(FileListWidget.__create_spacer())
         # layout.addWidget(lbl_text, alignment=NW)
@@ -99,7 +100,7 @@ class FileListWidget(qt.QWidget):
         layout.addWidget(load_btn, alignment=C)
         layout.addWidget(clear_btn, alignment=C)
         layout.addWidget(select_btn, alignment=C)
-        layout.addStretch()
+        # layout.addStretch()
 
         select_btn.clicked.connect(self.show_file)
         load_btn.clicked.connect(self.pick_dir)
@@ -163,11 +164,14 @@ class AppWindow(qt.QWidget):
         plw = PlotWidget()
         flw = FileListWidget()
 
+        plw.setSizePolicy(qt.QSizePolicy.Expanding, qt.QSizePolicy.Expanding)
+        flw.setSizePolicy(qt.QSizePolicy.MinimumExpanding, qt.QSizePolicy.Expanding)
+
         flw.set_image_show_callback(plw.init_vicar_callback())
 
         layout = qt.QHBoxLayout()
         layout.addWidget(flw)
-        layout.addWidget(plw)
+        layout.addWidget(plw, stretch=90)
         self.setLayout(layout)
         self.plw = plw
         self.flw = flw
