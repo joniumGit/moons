@@ -1,3 +1,4 @@
+import importlib
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -9,9 +10,10 @@ from matplotlib.backend_bases import MouseEvent, MouseButton
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavBar
 from matplotlib.figure import Figure
-from ..analysis import set_info, br_reduction
 from vicarutil.image import VicarImage, read_image
 
+from .. import analysis as anal
+from ..analysis import br_reduction
 from ..support import logging as log
 
 
@@ -94,7 +96,12 @@ class FigureWrapper(FigureCanvasQTAgg):
         line_axis.set_title("line")
 
         try:
-            title = set_info(image, axes=data_axis)
+            delegate = 'show_image_delegate'
+            if not hasattr(self, delegate):
+                __i = importlib.import_module(f"..analysis.missions.{anal.SELECTED}", package=__package__)
+                # noinspection PyUnresolvedReferences
+                setattr(self, delegate, __i.set_info)
+            title = getattr(self, delegate)(image, axes=data_axis)
             self.fig.suptitle(title)
         except Exception as e:
             log.exception("Failed to set info", exc_info=e)

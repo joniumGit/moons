@@ -39,6 +39,17 @@ def get_parser(parent=None) -> Optional[ArgumentParser]:
         type=str,
         required=True
     )
+    parser.add_argument(
+        "--mission",
+        metavar="MISSION",
+        dest="mission",
+        nargs=1,
+        help="Mission to analyze. "
+             "I.E. Which mission to call set_info for (default: cassini). "
+             "Imports from vicarui.analysis.missions",
+        type=str,
+        required=False
+    )
     return parser
 
 
@@ -57,9 +68,13 @@ def init(ns: Namespace = None) -> None:
         pr = profile.Profile(builtins=False)
         pr.enable()
     if args.kernels is not None:
-        from .import analysis as anal
+        from . import analysis as anal
         info("Setting kernel path to: " + args.kernels.__repr__())
         anal.provide_kernels(args.kernels[0])
+    if args.mission is not None:
+        from . import analysis as anal
+        info(f"Mission: {args.mission[0]}")
+        anal.SELECTED = args.mission[0].strip()
 
     debug("Setting Matplotlib backend")
     matplotlib.use("Qt5Agg")

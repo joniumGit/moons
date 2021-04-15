@@ -1,25 +1,11 @@
-import os
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional
 
 import numpy as np
 import spiceypy as spice
-
-from .internal import log
 from vicarutil.image import VicarImage
 
-META_KERNEL: str
-KERNEL_BASE: str
-
-
-def provide_kernels(path: str):
-    log.info(f"Received kernel base path: {path}")
-    if path.endswith('/'):
-        path = path[:-1]
-    global META_KERNEL
-    global KERNEL_BASE
-    META_KERNEL = f'{path}/mk/commons.tm'
-    KERNEL_BASE = f'{path}/mk/'
-
+from ..internal import log
+from ..kernels import load_kernels_for_image, release_kernels
 
 log.debug('Initializing SPICE: %s' + spice.tkvrsn('TOOLKIT'))
 
@@ -33,70 +19,6 @@ FRAME_WAC = 'CASSINI_ISS_WAC'
 FRAME_NAC = 'CASSINI_ISS_NAC'
 LABEL_WAC = 'ISSWA'
 LABEL_NAC = 'ISSNA'
-
-
-def load_kernels_for_image(image: VicarImage):
-    try:
-        spice.furnsh(META_KERNEL)
-        year = image.labels.property('IDENTIFICATION')['IMAGE_TIME'][0:4]
-        for f in os.listdir(KERNEL_BASE):
-            if year in f:
-                kernel = KERNEL_BASE + f
-                log.info("Loading kernel: " + f)
-                spice.furnsh(kernel)
-    except KeyError:
-        log.warning("Failed to find identification tag from image: %s", image.name)
-
-
-def release_kernels():
-    try:
-        spice.kclear()
-    except Exception as e:
-        log.critical("Failed to unload kernel!", exc_info=e)
-
-
-def br_reduction(image: VicarImage) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Background reduction for image, also normalizes image data
-
-    Parameters
-    ----------
-    image : VicarImage
-            Image instance
-
-    Returns
-    -------
-    data : tuple
-           (Image data with reduced background, Reduction)
-    """
-
-    import numpy.polynomial.polynomial as poly
-
-    img: np.ndarray = image.data[0].copy()[3:-2, 3:-2]
-    indices = list()
-    for _i, line in enumerate(img):
-        if np.isclose(np.average(line), line[0]):
-            indices.append(_i)
-    img = np.delete(img, indices, axis=0)
-
-    def reduction(arr: np.ndarray, mask: np.ndarray):
-        r = np.arange(0, len(arr))
-        averages = np.average(arr, axis=1)
-        f = poly.polyval(r, poly.polyfit(r, averages, 3))
-        for i in r:
-            np.add(mask[i], f[i], mask[i])
-
-    minus = np.zeros(img.shape)
-
-    reduction(img, minus)
-    reduction(img.T, minus.T)
-
-    minus = minus / 2
-
-    img = img - minus
-    img = (img - np.min(img)) * 1 / (np.max(img) - np.min(img))
-
-    return img, minus
 
 
 def set_info(image: VicarImage, axes=None) -> Optional[str]:
@@ -192,4 +114,4 @@ def set_info(image: VicarImage, axes=None) -> Optional[str]:
         release_kernels()
 
 
-__all__ = ['load_kernels_for_image', 'release_kernels', 'set_info', 'provide_kernels', 'br_reduction']
+__all__ = ['set_info']
