@@ -115,40 +115,70 @@ class VicarEvent:
             window = self.area[1]
             row = int(event.ydata)
             col = int(event.xdata)
+
             row_max = len(self.data) - 1
             col_max = len(self.data[0]) - 1
+
             log.debug(f"Click detected at {row},{col}")
             if width <= row <= row_max - width and width <= col <= col_max - width:
-                self.line_has_data = True
-                if event.button == MouseButton.LEFT:
-                    self.line_axis.clear()
-                    #
-                    self.line_axis.set_title(f"HORIZONTAL slice with HEIGHT: {row - width} <= y <= {row + width}")
-                    start = max(0, col - window)
-                    end = min(col_max, col + window) + 1
-                    x = np.arange(start, end, 1)
-                    y = np.average(
-                        self.data[row - width:row + width + 1, start:end].T,
-                        axis=1
-                    )
-                    self.line_axis.scatter(x, y, s=8, c='b')
+                if event.button in {MouseButton.LEFT, MouseButton.RIGHT}:
+                    from matplotlib.patches import Rectangle
+                    if hasattr(self, 'rect'):
+                        if self.rect:
+                            self.rect.remove()
+                            self.rect = None
 
-                    self.fit_x = x
-                    self.fit_y = y
-                elif event.button == MouseButton.RIGHT:
-                    self.line_axis.clear()
-                    self.line_axis.set_title(f"VERTICAL slice with WIDTH: {col - width} <= x <= {col + width}")
-                    start = max(0, row - window)
-                    end = min(row_max, row + window) + 1
-                    x = np.arange(start, end, 1)
-                    y = np.average(
-                        self.data[start:end, col - width:col + width + 1],
-                        axis=1
-                    )
-                    self.line_axis.scatter(x, y, s=8, c='r')
+                    self.line_has_data = True
+                    if event.button == MouseButton.LEFT:
+                        self.line_axis.clear()
+                        self.line_axis.set_title(f"HORIZONTAL slice with HEIGHT: {row - width} <= y <= {row + width}")
+                        start = max(0, col - window)
+                        end = min(col_max, col + window) + 1
+                        x = np.arange(start, end, 1)
+                        y = np.average(
+                            self.data[row - width:row + width + 1, start:end].T,
+                            axis=1
+                        )
+                        self.line_axis.scatter(x, y, s=8, c='b')
 
-                    self.fit_x = x
-                    self.fit_y = y
+                        self.fit_x = x
+                        self.fit_y = y
+
+                        rect = Rectangle(
+                            (start, row - width),
+                            end - start - 1,
+                            width * 2,
+                            color='b',
+                            lw=1,
+                            fill=False
+                        )
+                        self.rect = rect
+                        self.data_axis.add_patch(rect)
+                    elif event.button == MouseButton.RIGHT:
+                        self.line_axis.clear()
+                        self.line_axis.set_title(f"VERTICAL slice with WIDTH: {col - width} <= x <= {col + width}")
+                        start = max(0, row - window)
+                        end = min(row_max, row + window) + 1
+                        x = np.arange(start, end, 1)
+                        y = np.average(
+                            self.data[start:end, col - width:col + width + 1],
+                            axis=1
+                        )
+                        self.line_axis.scatter(x, y, s=8, c='r')
+
+                        self.fit_x = x
+                        self.fit_y = y
+
+                        rect = Rectangle(
+                            (col - width, start),
+                            width * 2,
+                            end - start - 1,
+                            color='r',
+                            lw=1,
+                            fill=False
+                        )
+                        self.rect = rect
+                        self.data_axis.add_patch(rect)
                 else:
                     self.clear_line()
             else:
