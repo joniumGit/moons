@@ -36,8 +36,7 @@ def get_parser(parent=None) -> Optional[ArgumentParser]:
         dest="kernels",
         nargs=1,
         help="Kernel base path",
-        type=str,
-        required=True
+        type=str
     )
     parser.add_argument(
         "--mission",
