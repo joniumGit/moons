@@ -1,6 +1,6 @@
 import importlib
 from pathlib import Path
-from typing import Callable, Optional, Any, Union
+from typing import Callable, Optional, Any, Union, Tuple, Dict
 
 import numpy as np
 from PySide2 import QtWidgets as qt
@@ -31,7 +31,7 @@ class VicarEvent:
     fit_x_end: int = -1
     fit_degree: int = 2
 
-    def __init__(self, data: np.ndarray, data_axis: Axes, line_axis: Axes, area: tuple[int, int]):
+    def __init__(self, data: np.ndarray, data_axis: Axes, line_axis: Axes, area: Tuple[int, int]):
         self.data = data
         self.area = area
         self.data_axis = data_axis
@@ -216,8 +216,8 @@ class FigureWrapper(FigureCanvasQTAgg):
             self,
             image: VicarImage,
             norm: Callable[[np.ndarray], Union[ImageNormalize, None]],
-            br_pack: dict[str, Any],
-            click_area: tuple[int, int],
+            br_pack: Dict[str, Any],
+            click_area: Tuple[int, int],
             **kwargs
     ):
         data_axis: Axes = self.fig.add_subplot(3, 3, (2, 6))
@@ -355,7 +355,7 @@ class AdjustmentWidget(qt.QWidget):
 
         self.setLayout(layout)
 
-    def get_br_package(self) -> dict[str, Any]:
+    def get_br_package(self) -> Dict[str, Any]:
         return {
             'normalize': self.normal_toggle.isChecked(),
             'reduce': self.br_toggle.isChecked(),
@@ -369,7 +369,7 @@ class AdjustmentWidget(qt.QWidget):
         else:
             return lambda image: None
 
-    def get_click_area(self) -> tuple[int, int]:
+    def get_click_area(self) -> Tuple[int, int]:
         w = self.click_width.text().strip()
         wind = self.click_window.text().strip()
         return (
