@@ -7,7 +7,7 @@ from typing import Optional
 import matplotlib
 from PySide2 import QtWidgets as qt
 
-from .support import info, debug, invoke_safe
+from .support import info, debug, invoke_safe, init_logging
 from .viewer import AppWindow
 
 pr: Optional[profile.Profile] = None
@@ -81,6 +81,7 @@ def init(ns: Namespace = None) -> None:
 
 
 def run(no_init: bool = False):
+    init_logging()
     if not no_init:
         init()
     info("Starting application")

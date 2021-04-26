@@ -12,6 +12,8 @@ def reader(ns: argparse.Namespace):
             print(image.labels)
             if image.eol_labels:
                 print(image.eol_labels)
+            return True
+        return False
 
     if ns.file:
         try:

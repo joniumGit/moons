@@ -10,19 +10,11 @@ from matplotlib.backend_bases import MouseEvent, MouseButton
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavBar
 from matplotlib.figure import Figure
-from vicarutil.image import VicarImage, read_image
+from vicarutil.image import read_image
 
 from .. import analysis as anal
-from ..analysis import br_reduction
+from ..analysis import br_reduction, DataPacket, ImageWrapper
 from ..support import logging as log
-
-
-def e(s: str):
-    part = s.split('e')
-    if len(part) != 1:
-        return part[0] + "e^{" + str(int(part[1])) + "}"
-    else:
-        return part[0]
 
 
 class VicarEvent:
@@ -30,6 +22,7 @@ class VicarEvent:
     fit_x_start: int = -1
     fit_x_end: int = -1
     fit_degree: int = 2
+    dpkt: DataPacket
 
     def __init__(self, data: np.ndarray, data_axis: Axes, line_axis: Axes, area: tuple[int, int]):
         self.data = data
@@ -37,21 +30,24 @@ class VicarEvent:
         self.data_axis = data_axis
         self.line_axis = line_axis
         self.cid = data_axis.figure.canvas.mpl_connect('button_press_event', self)
+        self.dpkt = DataPacket(data)
 
-        self.fit_x = None
-        self.fit_y = None
+        self.err = None
+        self.rect = None
 
     def __call__(self, event: MouseEvent):
         if event.canvas.cursor().shape() != 0:
             return
         if event.inaxes == self.line_axis and self.line_has_data:
+            if self.err:
+                self.err.remove()
+                self.err = None
             title = self.line_axis.get_title().split("\n")[0]
             if event.button == MouseButton.LEFT and self.fit_x_start == -1 and self.fit_x_end == -1:
                 self.fit_x_start = event.xdata
                 self.line_axis.set_title(title + " \nset end ")
             elif event.button == MouseButton.LEFT and self.fit_x_end == -1:
                 self.fit_x_end = event.xdata
-
                 if self.fit_x_start == self.fit_x_end:
                     return
                 elif self.fit_x_end < self.fit_x_start:
@@ -59,43 +55,28 @@ class VicarEvent:
                     self.fit_x_end = self.fit_x_start
                     self.fit_x_start = temp
 
-                data_x = self.fit_x
-                data_y = self.fit_y
-
-                fit_data_x = list()
-                fit_data_y = list()
-
-                else_x = list()
-                else_y = list()
-
-                for i, j in zip(data_x, data_y):
-                    if self.fit_x_start <= i <= self.fit_x_end:
-                        fit_data_x.append(i)
-                        fit_data_y.append(j)
-                    else:
-                        else_x.append(i)
-                        else_y.append(j)
-
-                log.debug(str(fit_data_x))
-                log.debug(str(fit_data_y))
-
-                import numpy.polynomial.polynomial as poly
-
                 self.line_axis.set_title(title)
 
-                def _plot(_x_s, _x_e, _x_d, _y_d, _c):
-                    fit = poly.polyfit(_x_d, _y_d, self.fit_degree)
-                    nx = np.arange(_x_s, _x_e, 0.1)
-                    f = poly.polyval(nx, fit)
-                    self.line_axis.plot(nx, f, linewidth=3, c=_c)
-                    self.line_axis.set_title(self.line_axis.get_title() + f"\n{_c}: $" + e(f"{fit[0]:.3e}") + ''.join([
-                        (" +" if __x > 0 else " ") + e(f"{__x:.3e}") + f"x^{__i + 1}"
-                        if __i != 0 else e(f"{__x:.3e}") + "x"
-                        for __i, __x in enumerate(fit[1:])
-                    ]) + "$")
+                d = self.dpkt.fit(
+                    self.fit_x_start,
+                    self.fit_x_end,
+                    in_kwargs={'color': 'black', 'linewidth': 3},
+                    out_kwargs={'color': 'gray', 'linewidth': 3}
+                )
 
-                _plot(data_x[0], data_x[-1], else_x, else_y, 'gray')
-                _plot(self.fit_x_start, self.fit_x_end, fit_data_x, fit_data_y, 'black')
+                self.line_axis.set_title(
+                    self.line_axis.get_title() + '\n' + d['FIT']['title'] + '\n' + d['BG']['title']
+                )
+
+                self.line_axis.add_line(d['FIT']['line'])
+                self.line_axis.add_line(d['BG']['line'])
+                self.err = self.line_axis.scatter(
+                    d['BG']['out'][0],
+                    d['BG']['out'][1],
+                    c='white',
+                    s=4,
+                    marker='.'
+                )
 
                 self.line_axis.figure.canvas.draw()
             else:
@@ -111,78 +92,36 @@ class VicarEvent:
                     self.line_axis.lines.pop(0)
             self.line_axis.figure.canvas.draw()
         elif event.inaxes == self.data_axis:
-            width = self.area[0]
-            window = self.area[1]
-            row = int(event.ydata)
-            col = int(event.xdata)
-
-            row_max = len(self.data) - 1
-            col_max = len(self.data[0]) - 1
-
-            log.debug(f"Click detected at {row},{col}")
-            if width <= row <= row_max - width and width <= col <= col_max - width:
-                if event.button in {MouseButton.LEFT, MouseButton.RIGHT}:
-                    from matplotlib.patches import Rectangle
-                    if hasattr(self, 'rect'):
-                        if self.rect:
-                            self.rect.remove()
-                            self.rect = None
-
-                    self.line_has_data = True
-                    if event.button == MouseButton.LEFT:
-                        self.line_axis.clear()
-                        self.line_axis.set_title(f"HORIZONTAL slice with HEIGHT: {row - width} <= y <= {row + width}")
-                        start = max(0, col - window)
-                        end = min(col_max, col + window) + 1
-                        x = np.arange(start, end, 1)
-                        y = np.average(
-                            self.data[row - width:row + width + 1, start:end].T,
-                            axis=1
-                        )
-                        self.line_axis.scatter(x, y, s=8, c='b')
-
-                        self.fit_x = x
-                        self.fit_y = y
-
-                        rect = Rectangle(
-                            (start, row - width),
-                            end - start - 1,
-                            width * 2,
-                            color='b',
-                            lw=1,
-                            fill=False
-                        )
-                        self.rect = rect
-                        self.data_axis.add_patch(rect)
-                    elif event.button == MouseButton.RIGHT:
-                        self.line_axis.clear()
-                        self.line_axis.set_title(f"VERTICAL slice with WIDTH: {col - width} <= x <= {col + width}")
-                        start = max(0, row - window)
-                        end = min(row_max, row + window) + 1
-                        x = np.arange(start, end, 1)
-                        y = np.average(
-                            self.data[start:end, col - width:col + width + 1],
-                            axis=1
-                        )
-                        self.line_axis.scatter(x, y, s=8, c='r')
-
-                        self.fit_x = x
-                        self.fit_y = y
-
-                        rect = Rectangle(
-                            (col - width, start),
-                            width * 2,
-                            end - start - 1,
-                            color='r',
-                            lw=1,
-                            fill=False
-                        )
-                        self.rect = rect
-                        self.data_axis.add_patch(rect)
+            self.line_axis.clear()
+            if self.rect:
+                self.rect.remove()
+                self.rect = None
+            if event.button in {MouseButton.LEFT, MouseButton.RIGHT}:
+                width = self.area[0]
+                window = self.area[1]
+                row = int(event.ydata)
+                col = int(event.xdata)
+                log.debug(f"Click detected at {row},{col}")
+                self.dpkt.configure(width, window, 2)
+                r = self.dpkt.select(
+                    col,
+                    row,
+                    vertical=event.button == MouseButton.RIGHT,
+                    lw=1,
+                    fill=False,
+                )
+                if event.button == MouseButton.LEFT:
+                    r.set_color('b')
+                    self.line_axis.set_title(f"HORIZONTAL slice with HEIGHT: {row - width} <= y <= {row + width}")
+                    self.dpkt.scatter(self.line_axis, s=8, c='b')
                 else:
-                    self.clear_line()
+                    r.set_color('r')
+                    self.line_axis.set_title(f"VERTICAL slice with WIDTH: {col - width} <= x <= {col + width}")
+                    self.dpkt.scatter(self.line_axis, s=8, c='r')
+                self.rect = self.data_axis.add_patch(r)
+                self.line_has_data = True
             else:
-                self.clear_line()
+                self.line_has_data = False
             self.line_axis.figure.canvas.draw()
             self.line_axis.figure.canvas.flush_events()
 
@@ -191,6 +130,8 @@ class VicarEvent:
         self.line_has_data = False
         self.fit_x_start = -1
         self.fit_x_end = -1
+        self.rect = None
+        self.err = None
 
     def detach(self):
         try:
@@ -214,7 +155,7 @@ class FigureWrapper(FigureCanvasQTAgg):
 
     def show_image(
             self,
-            image: VicarImage,
+            image: ImageWrapper,
             norm: Callable[[np.ndarray], Union[ImageNormalize, None]],
             br_pack: dict[str, Any],
             click_area: tuple[int, int],
@@ -236,13 +177,14 @@ class FigureWrapper(FigureCanvasQTAgg):
                 __i = importlib.import_module(f"..analysis.missions.{anal.SELECTED}", package=__package__)
                 # noinspection PyUnresolvedReferences
                 setattr(self, delegate, __i.set_info)
-            title = getattr(self, delegate)(image, axes=data_axis, **kwargs)
+            title = getattr(self, delegate)(image.get_raw(), axes=data_axis, **kwargs)
             self.fig.suptitle(title)
         except Exception as e:
             log.exception("Failed to set info", exc_info=e)
 
         data, mask = br_reduction(image, **br_pack)
-        og_axis.imshow(image.data[0], cmap="gray")
+
+        og_axis.imshow(image.get_image(), cmap="gray")
         bg_axis.imshow(mask, cmap="coolwarm")
 
         normalizer = norm(data)
@@ -285,6 +227,10 @@ class AdjustmentWidget(qt.QWidget):
         degree_label = qt.QLabel(text="Degree")
         degree = qt.QComboBox()
 
+        old_toggle = qt.QCheckBox(text="Outlier detection")
+        old_toggle.setChecked(True)
+        self.old_toggle = old_toggle
+
         for i in range(1, 6):
             degree.addItem(str(i))
 
@@ -317,6 +263,7 @@ class AdjustmentWidget(qt.QWidget):
         layout.addWidget(br_toggle, alignment=NW)
         layout.addWidget(degree, alignment=NW)
         layout.addWidget(degree_label, alignment=CL)
+        layout.addWidget(old_toggle, alignment=NW)
         layout.addSpacerItem(qt.QSpacerItem(10, 5, hData=qt.QSizePolicy.Minimum, vData=qt.QSizePolicy.Minimum))
         layout.addWidget(normal_toggle, alignment=NW)
         layout.addSpacerItem(qt.QSpacerItem(10, 5, hData=qt.QSizePolicy.Minimum, vData=qt.QSizePolicy.Minimum))
@@ -360,7 +307,8 @@ class AdjustmentWidget(qt.QWidget):
             'normalize': self.normal_toggle.isChecked(),
             'reduce': self.br_toggle.isChecked(),
             'degree': self.degree.currentIndex() + 1,
-            'border': int(self.border_value.text()) if self.border_value.text().strip() != '' else 0
+            'border': int(self.border_value.text()) if self.border_value.text().strip() != '' else 0,
+            'old': self.old_toggle.isChecked()
         }
 
     def get_image_normalize(self) -> Callable[[np.ndarray], Union[ImageNormalize, None]]:
@@ -379,7 +327,7 @@ class AdjustmentWidget(qt.QWidget):
 
 
 class PlotWidget(qt.QWidget):
-    image: Optional[VicarImage]
+    image: Optional[ImageWrapper]
 
     def __init__(self, *args, **kwargs):
         super(PlotWidget, self).__init__(*args, **kwargs)
@@ -409,7 +357,7 @@ class PlotWidget(qt.QWidget):
         if self.image:
             self.show_image(self.image)
 
-    def show_image(self, image: VicarImage):
+    def show_image(self, image: ImageWrapper):
         self.image = image
         self.fig.clear()
         self.fig.show_image(
@@ -420,7 +368,7 @@ class PlotWidget(qt.QWidget):
         )
 
     def init_vicar_callback(self) -> Callable[[Path], None]:
-        return lambda p: self.show_image(read_image(p))
+        return lambda p: self.show_image(ImageWrapper(read_image(p)))
 
 
 class StretchWidget(qt.QWidget):

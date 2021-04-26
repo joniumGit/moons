@@ -26,7 +26,7 @@ def log_object(o: Any, message: str = "Object information: %s") -> None:
     _logger.debug(message, str(o))
 
 
-def __init():
+def init_logging():
     fmt = logging.Formatter('{asctime:s}|{levelname:<8s}|{name:<20s}|{message:s}', style='{')
     _logger.setLevel(logging.INFO)
     _logger.propagate = 0
@@ -61,9 +61,6 @@ def __init():
             raise Exception("Testing exception log...")
         except Exception as e:
             handle_exception(e)
-
-
-__init()
 
 
 def invoke_safe(f):

@@ -7,7 +7,7 @@ def new_ui_entry(ns: argparse.Namespace):
     run(no_init=True)
 
 
-def old_ui_entry(ns: argparse.Namespace):
+def old_ui_entry(_: argparse.Namespace):
     from .old_viewer import ui
     ui.run()
 
