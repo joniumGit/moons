@@ -2,10 +2,12 @@ from typing import Tuple, Optional
 
 import numpy as np
 from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import PolynomialFeatures
 
 from .wrapper import ImageWrapper
+from ..support import info
 
 
 def ransac(
@@ -20,7 +22,9 @@ def ransac(
     )
     pipe.fit(x[..., None], y)
     ny = pipe.predict(x[..., None])
+    mse = mean_squared_error(y, ny)
     np.add(ny, out, out=out)
+    return mse
 
 
 def remove_invalid(img: np.ndarray):
@@ -40,7 +44,7 @@ def br_reduction(
         degree: int = 3,
         border: int = 2,
         old: bool = True
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> Tuple[np.ndarray, np.ndarray, float]:
     """
     Polynomial background reduction and image normalization
 
@@ -71,7 +75,7 @@ def br_reduction(
     Returns
     -------
     data:       tuple
-                (Normalized image data with reduced background, Reduction data)
+                (Normalized image data with reduced background, Reduction data, MSE for reduction)
     """
 
     img: np.ndarray
@@ -82,21 +86,35 @@ def br_reduction(
     minus: Optional[np.ndarray] = None
     gen_bg: bool = True
 
+    if normalize:
+        img = (img - np.min(img)) * 1 / (np.max(img) - np.min(img))
+
+    mse = 0.0
     if image.get_bg() is not None:
         minus = image.get_bg()
-        gen_bg = not (img.shape == minus.shape and image.get_degree() == degree and old == image.is_old())
+        gen_bg = not (
+                img.shape == minus.shape
+                and image.get_degree() == degree
+                and old == image.is_old()
+                and normalize == image.is_normalized()
+        )
+        mse = image.get_mse() or 0.0
 
     if reduce and gen_bg:
+        from collections import deque
+
         minus = np.zeros(img.shape)
+        mse = deque()
 
         x = np.arange(0, len(img[0]))
         for i, line in enumerate(img):
-            ransac(x, line, minus[i], degree)
+            mse.append(ransac(x, line, minus[i], degree))
 
         x = np.arange(0, len(img))
         for i, line in enumerate(img.T):
-            ransac(x, line, minus.T[i], degree)
+            mse.append(ransac(x, line, minus.T[i], degree))
 
+        mse = np.median(mse)
         minus = minus / 2
 
         if old:
@@ -117,18 +135,17 @@ def br_reduction(
                     indexes.append([i, j])
             indexes = np.asarray(indexes)
             pipe.fit(indexes, minus.ravel())
-            minus = pipe.predict(indexes).reshape(img.shape)
+            pred = pipe.predict(indexes)
+            mse = np.median([mse, mean_squared_error(minus.ravel(), pred)])
+            minus = pred.reshape(img.shape)
 
-        image.add_bg(degree, minus, old)
+        image.add_bg(degree, minus, old, normalize, mse)
+        info(f"Background mse (Using old: {old}): {mse:.5e}")
 
-    if minus is not None:
+    if reduce and minus is not None:
         img = img - minus
-        if normalize:
-            minus = (minus - np.min(minus)) * 1 / (np.max(minus) - np.min(minus))
     else:
         minus = np.zeros(img.shape)
+        mse = 0.0
 
-    if normalize:
-        img = (img - np.min(img)) * 1 / (np.max(img) - np.min(img))
-
-    return img, minus
+    return img, minus, mse

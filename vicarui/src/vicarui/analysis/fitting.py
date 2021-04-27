@@ -10,8 +10,9 @@ from sklearn.preprocessing import PolynomialFeatures
 
 def e(s: str):
     part = s.split('e')
+    p1 = int(part[1])
     if len(part) != 1:
-        return part[0] + "e^{" + str(int(part[1])) + "}"
+        return part[0] + r"\cdot 10^{" + f"{'+' if p1 > 0 else ''}{str(p1)}" + "}"
     else:
         return part[0]
 
@@ -116,26 +117,34 @@ class DataPacket(object):
         y_in = np.asarray(y_in)
         y_out = np.asarray(y_out)
 
+        from sklearn.metrics import mean_squared_error
+
         reg = LinearRegression(n_jobs=-1)
         pipe = make_pipeline(PolynomialFeatures(self.degree), reg)
         pipe.fit(x_in, y_in)
         pred_y_in = pipe.predict(nx_in[..., None])
         fg_title = reg_to_title(reg, 'FIT LINREG:')
 
+        fg_mse = f'${e(f"{mean_squared_error(y_in, pipe.predict(x_in)):.5e}")}$'
+
         reg = RANSACRegressor(random_state=0, max_trials=1000, base_estimator=LinearRegression())
         pipe = make_pipeline(PolynomialFeatures(self.degree), reg)
         pipe.fit(x_out, y_out)
         pred_y_out = pipe.predict(nx_out[..., None])
-        bg_title = reg_to_title(reg.estimator_, 'BG RANSAC:')
+        bg_title = reg_to_title(reg.estimator_, 'BG  RANSAC:')
+
+        bg_mse = f'${e(f"{mean_squared_error(y_out, pipe.predict(x_out)):.5e}")}$'
 
         return {
             'BG': {
                 'out': (x_out[np.logical_not(reg.inlier_mask_)], y_out[np.logical_not(reg.inlier_mask_)]),
                 'title': bg_title,
-                'line': Line2D(nx_out, pred_y_out, **out_kwargs)
+                'line': Line2D(nx_out, pred_y_out, **out_kwargs),
+                'mse': bg_mse
             },
             'FIT': {
                 'title': fg_title,
                 'line': Line2D(nx_in, pred_y_in, **in_kwargs),
+                'mse': fg_mse
             }
         }

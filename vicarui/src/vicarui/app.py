@@ -86,6 +86,7 @@ def run(no_init: bool = False):
     info("Starting application")
     app = qt.QApplication(sys.argv)
     apw = AppWindow()
+    apw.setWindowTitle('VicarUI')
     info("Setup done, starting...")
     apw.show()
     code: int = 1

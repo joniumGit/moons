@@ -5,10 +5,24 @@ from typing import Callable, Optional
 from PySide2 import QtWidgets as qt
 from PySide2.QtCore import Qt
 
-from . import C
-from .imagewidget import PlotWidget
-from .model import FileModel, FileType
-from ..support import scan, debug, invoke_safe
+from ..helper import C
+from ..model import FileModel, FileType
+from ...support import scan, debug, invoke_safe
+
+
+class ImageChooser(qt.QFileDialog):
+
+    def __init__(self, callback: Callable, *args, **kwargs):
+        super(ImageChooser, self).__init__(*args, **kwargs)
+        self.callback = callback
+        fd = self
+        fd.setAcceptMode(fd.AcceptOpen)
+        fd.setFileMode(fd.DirectoryOnly)
+        fd.setOption(fd.ReadOnly, True)
+        fd.setOption(fd.ShowDirsOnly, True)
+        fd.setOption(fd.HideNameFilterDetails, True)
+        fd.setOption(fd.DontUseCustomDirectoryIcons, True)
+        fd.setViewMode(fd.List)
 
 
 class PathItem(qt.QListWidgetItem):
@@ -127,38 +141,3 @@ class FileListWidget(qt.QWidget):
 
     def show_on_dbl(self, *_, **__) -> None:
         self.show_file()
-
-
-class ImageChooser(qt.QFileDialog):
-
-    def __init__(self, callback: Callable, *args, **kwargs):
-        super(ImageChooser, self).__init__(*args, **kwargs)
-        self.callback = callback
-        fd = self
-        fd.setAcceptMode(fd.AcceptOpen)
-        fd.setFileMode(fd.DirectoryOnly)
-        fd.setOption(fd.ReadOnly, True)
-        fd.setOption(fd.ShowDirsOnly, True)
-        fd.setOption(fd.HideNameFilterDetails, True)
-        fd.setOption(fd.DontUseCustomDirectoryIcons, True)
-        fd.setViewMode(fd.List)
-
-
-class AppWindow(qt.QWidget):
-
-    def __init__(self, *args, **kwargs):
-        super(AppWindow, self).__init__(*args, **kwargs)
-        plw = PlotWidget()
-        flw = FileListWidget()
-
-        plw.setSizePolicy(qt.QSizePolicy.Expanding, qt.QSizePolicy.Expanding)
-        flw.setSizePolicy(qt.QSizePolicy.MinimumExpanding, qt.QSizePolicy.Expanding)
-
-        flw.set_image_show_callback(plw.init_vicar_callback())
-
-        layout = qt.QHBoxLayout()
-        layout.addWidget(flw)
-        layout.addWidget(plw, stretch=90)
-        self.setLayout(layout)
-        self.plw = plw
-        self.flw = flw
