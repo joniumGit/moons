@@ -75,6 +75,8 @@ def init(ns: Namespace = None) -> None:
         info(f"Mission: {args.mission[0]}")
         anal.SELECTED = args.mission[0].strip()
 
+    from .support import append_to_axes
+    append_to_axes()
     debug("Setting Matplotlib backend")
     matplotlib.use("Qt5Agg")
 

@@ -1,3 +1,3 @@
 from .align import *
-from .figerewrapper import FigureWrapper
+from .figurewrapper import FigureWrapper
 from .imageevent import VicarEvent

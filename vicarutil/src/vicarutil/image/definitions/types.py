@@ -30,7 +30,7 @@ SYSTEM_VALUE_TYPE = Union[VicarEnum, int, str]
 """
 Possible types for System labels.
 
-Look into definitions.py for more infor on these.
+Look into mpl.py for more infor on these.
 """
 
 SYSTEM_TYPE = Dict[VicarEnum, SYSTEM_VALUE_TYPE]

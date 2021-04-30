@@ -61,9 +61,14 @@ class Labels:
             o: object
             if isinstance(self.system[k], VicarEnum):
                 o = self.system[k].__repr__()
+            elif isinstance(self.system[k], str):
+                o = self.system[k]
             else:
                 o = self.system[k]
-            simple[k.__repr__()] = o
+            if isinstance(k, str):
+                simple[k] = o
+            else:
+                simple[k.__repr__()] = o
         return (
                 '{\n'
                 + f'    "SYSTEM": {json.dumps(simple, indent=8)},\n'.rsplit('}', maxsplit=1)[0]

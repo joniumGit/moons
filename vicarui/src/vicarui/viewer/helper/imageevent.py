@@ -15,13 +15,16 @@ class VicarEvent:
     fit_degree: int = 2
     dpkt: DataPacket
 
-    TITLE_ARGS = {'loc': 'left', 'fontsize': 'small', 'pad': 2, 'fontfamily': 'monospace'}
-
     def __init__(self, data: np.ndarray, data_axis: Axes, line_axis: Axes, area: Tuple[int, int]):
         self.data = data
         self.area = area
-        self.data_axis = data_axis
-        self.line_axis = line_axis
+
+        from ...support import AxesWrapper
+        from typing import cast
+
+        self.data_axis = cast(AxesWrapper, data_axis)
+        self.line_axis = cast(AxesWrapper, line_axis)
+
         self.cid = data_axis.figure.canvas.mpl_connect('button_press_event', self)
         self.dpkt = DataPacket(data)
 
@@ -35,10 +38,10 @@ class VicarEvent:
             if self.err:
                 self.err.remove()
                 self.err = None
-            title = self.line_axis.get_title(loc='left').split("\n")[0]
             if event.button == MouseButton.LEFT and self.fit_x_start == -1 and self.fit_x_end == -1:
                 self.fit_x_start = event.xdata
-                self.line_axis.set_title(title + " \nset end ", **VicarEvent.TITLE_ARGS)
+                self.line_axis.set_left(self.line_axis.get_first_left())
+                self.line_axis.append_left("set end ")
             elif event.button == MouseButton.LEFT and self.fit_x_end == -1:
                 self.fit_x_end = event.xdata
                 if self.fit_x_start == self.fit_x_end:
@@ -48,7 +51,7 @@ class VicarEvent:
                     self.fit_x_end = self.fit_x_start
                     self.fit_x_start = temp
 
-                self.line_axis.set_title(title, **VicarEvent.TITLE_ARGS)
+                self.line_axis.set_left(self.line_axis.get_first_left())
 
                 d = self.dpkt.fit(
                     self.fit_x_start,
@@ -57,13 +60,11 @@ class VicarEvent:
                     out_kwargs={'color': 'gray', 'linewidth': 3}
                 )
 
-                self.line_axis.set_title(
-                    self.line_axis.get_title(loc='left')
+                self.line_axis.append_left(
+                    d['FIT']['title']
+                    + fr' mse: {d["FIT"]["mse"]}'
                     + '\n'
-                    + d['FIT']['title'] + fr' mse: {d["FIT"]["mse"]}'
-                    + '\n'
-                    + d['BG']['title'] + fr' mse: {d["BG"]["mse"]}',
-                    **VicarEvent.TITLE_ARGS
+                    + d['BG']['title'] + fr' mse: {d["BG"]["mse"]}'
                 )
 
                 self.line_axis.add_line(d['FIT']['line'])
@@ -76,18 +77,18 @@ class VicarEvent:
                     marker='.'
                 )
 
-                self.line_axis.figure.canvas.draw()
+                self.line_axis.refresh()
             else:
                 if event.button == MouseButton.LEFT:
                     self.fit_x_start = event.xdata
-                    self.line_axis.set_title(title + "\nset end ", **VicarEvent.TITLE_ARGS)
+                    self.line_axis.set_left(self.line_axis.get_first_left())
+                    self.line_axis.append_left("set end ")
                 else:
                     self.fit_x_start = -1
-                    self.line_axis.set_title(title + "\nset start ", **VicarEvent.TITLE_ARGS)
+                    self.line_axis.set_left(self.line_axis.get_first_left())
+                    self.line_axis.append_left("set start ")
                 self.fit_x_end = -1
-                if len(self.line_axis.lines) != 0:
-                    self.line_axis.lines.pop(1)
-                    self.line_axis.lines.pop(0)
+                self.line_axis.clear_lines()
             self.line_axis.figure.canvas.draw()
         elif event.inaxes == self.data_axis:
             self.line_axis.clear()
@@ -110,24 +111,17 @@ class VicarEvent:
                 )
                 if event.button == MouseButton.LEFT:
                     r.set_color('b')
-                    self.line_axis.set_title(
-                        f"HORIZONTAL slice with HEIGHT: {row - width} <= y <= {row + width}",
-                        **VicarEvent.TITLE_ARGS
-                    )
+                    self.line_axis.set_left(f"HORIZONTAL slice with HEIGHT: {row - width} <= y <= {row + width}")
                     self.dpkt.scatter(self.line_axis, s=8, c='b')
                 else:
                     r.set_color('r')
-                    self.line_axis.set_title(
-                        f"VERTICAL slice with WIDTH: {col - width} <= x <= {col + width}",
-                        **VicarEvent.TITLE_ARGS
-                    )
+                    self.line_axis.set_left(f"VERTICAL slice with WIDTH: {col - width} <= x <= {col + width}")
                     self.dpkt.scatter(self.line_axis, s=8, c='r')
                 self.rect = self.data_axis.add_patch(r)
                 self.line_has_data = True
             else:
                 self.line_has_data = False
-            self.line_axis.figure.canvas.draw()
-            self.line_axis.figure.canvas.flush_events()
+            self.line_axis.refresh()
 
     def clear_line(self):
         self.line_axis.clear()

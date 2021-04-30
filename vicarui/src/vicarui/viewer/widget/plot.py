@@ -5,8 +5,10 @@ from PySide2 import QtWidgets as qt
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavBar
 from vicarutil.image import read_image
 
+from .additionalbtn import AdditionalBtn
 from .adjustment import AdjustmentWidget
-from ..helper import FigureWrapper
+from .configbtn import ConfigBtn
+from ..helper import FigureWrapper, E
 from ...analysis import ImageWrapper
 
 
@@ -32,10 +34,36 @@ class PlotWidget(qt.QWidget):
 
         layout.addWidget(self.adjustments)
         layout.addWidget(self.frame)
-        layout.addWidget(self.tools)
+
+        sub = qt.QHBoxLayout()
+        sub.addWidget(self.tools)
+        sub.addStretch()
+        self.progress = qt.QProgressBar()
+        self.progress.setFixedWidth(250)
+        sub.addWidget(self.progress, alignment=E)
+
+        config = ConfigBtn()
+        self.config = config
+        additional = AdditionalBtn(self.additional_callable)
+        sub.addWidget(config)
+        sub.addWidget(additional)
+
+        layout.addLayout(sub)
 
         self.setLayout(layout)
         self.image = None
+
+    def get_config(self):
+        return self.config.get_config()
+
+    def additional_callable(self):
+        if self.image is not None:
+            return {
+                'image': self.image.get_raw(),
+                **self.get_config()
+            }
+        else:
+            return dict()
 
     def reload_image(self):
         if self.image:
@@ -49,7 +77,7 @@ class PlotWidget(qt.QWidget):
             self.adjustments.get_image_normalize(),
             self.adjustments.get_br_package(),
             self.adjustments.get_click_area(),
-            **(self.adjustments.get_config() or dict())
+            **(self.get_config() or dict())
         )
 
     def init_vicar_callback(self) -> Callable[[Path], None]:

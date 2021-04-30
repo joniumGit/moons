@@ -45,11 +45,11 @@ def set_info(image: VicarImage, axes=None, border: int = 0, **config) -> str:
     return "Failed"
 
 
-def get_additional_functions() -> Dict[str, str]:
+def get_additional_functions() -> Optional[Dict[str, str]]:
     m = anal_module()
     try:
         if m:
             return m.get_additional_functions()
     except AttributeError:
         pass
-    return dict()
+    return None

@@ -8,22 +8,14 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import PolynomialFeatures
 
 
-def e(s: str):
-    part = s.split('e')
-    p1 = int(part[1])
-    if len(part) != 1:
-        return part[0] + r"\cdot 10^{" + f"{'+' if p1 > 0 else ''}{str(p1)}" + "}"
-    else:
-        return part[0]
-
-
 def reg_to_title(regressor, prefix: str) -> str:
+    from .tex import sci_4
     a = regressor.coef_[2]
-    a = e(fr"{'' if a < 0 else '+'}{a:.4e}") + r"\cdot x^2"
+    a = sci_4(a, plus_sign=True) + r"\cdot x^2"
     b = regressor.coef_[1]
-    b = e(fr"{'' if b < 0 else '+'}{b:.4e}") + r"\cdot x"
+    b = sci_4(b, plus_sign=True) + r"\cdot x"
     c = regressor.intercept_
-    c = e(fr"{'' if c < 0 else '+'}{c:.4e}")
+    c = sci_4(c, plus_sign=True)
     return fr"{prefix} ${a}{b}{c}$"
 
 
@@ -125,6 +117,7 @@ class DataPacket(object):
         pred_y_in = pipe.predict(nx_in[..., None])
         fg_title = reg_to_title(reg, 'FIT LINREG:')
 
+        from .tex import e
         fg_mse = f'${e(f"{mean_squared_error(y_in, pipe.predict(x_in)):.5e}")}$'
 
         reg = RANSACRegressor(random_state=0, max_trials=1000, base_estimator=LinearRegression())

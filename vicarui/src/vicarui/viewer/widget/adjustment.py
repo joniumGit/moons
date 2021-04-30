@@ -1,22 +1,17 @@
-from typing import Callable, Optional, Any, Union, Tuple, Dict
+from typing import Callable, Any, Union, Tuple, Dict
 
 import numpy as np
 from PySide2 import QtWidgets as qt
+from PySide2.QtGui import QIntValidator
 from astropy.visualization import ImageNormalize, ZScaleInterval, HistEqStretch
 
 from ..helper import NW, CL
-from ... import analysis as anal
-from ...support import logging as log
 
 
 class AdjustmentWidget(qt.QWidget):
-    anal_config: Optional[Dict]
-    anal_config_filled: Optional[Dict]
 
     def __init__(self, *args, **kwargs):
         super(AdjustmentWidget, self).__init__(*args, **kwargs)
-        self.anal_config = anal.get_config()
-        self.anal_config_filled = None
 
         self.setFixedHeight(35)
 
@@ -48,7 +43,6 @@ class AdjustmentWidget(qt.QWidget):
         border_value.setText(str(2))
         border_value.setFixedWidth(40)
 
-        from PySide2.QtGui import QIntValidator
         validator = QIntValidator()
         validator.setBottom(0)
         border_value.setValidator(validator)
@@ -101,13 +95,6 @@ class AdjustmentWidget(qt.QWidget):
         reload_btn = qt.QPushButton(text="Reload")
         self.reload_btn = reload_btn
         layout.addWidget(reload_btn, alignment=NW)
-
-        if self.anal_config:
-            config_btn = qt.QPushButton(text="Config")
-            config_btn.clicked.connect(self.show_anal_dialog)
-            self.config_btn = config_btn
-            layout.addWidget(config_btn, alignment=NW)
-
         self.setLayout(layout)
 
     def get_br_package(self) -> Dict[str, Any]:
@@ -128,85 +115,4 @@ class AdjustmentWidget(qt.QWidget):
     def get_click_area(self) -> Tuple[int, int]:
         w = self.click_width.text().strip()
         wind = self.click_window.text().strip()
-        return (
-            int(w) if w != '' else 1,
-            int(wind) if wind != '' else 1
-        )
-
-    def get_config(self) -> Optional[Dict]:
-        values: Dict
-        if self.anal_config_filled:
-            values = self.anal_config_filled
-        else:
-            values = dict()
-            for k, v in self.anal_config.items():
-                values[k] = v[1]
-            self.anal_config_filled = values
-        return values
-
-    def show_anal_dialog(self, *_, **__):
-        values = self.get_config()
-
-        from PySide2.QtWidgets import QDialog
-        from PySide2.QtGui import QIntValidator, QDoubleValidator
-
-        widgets = dict()
-
-        layout = qt.QVBoxLayout()
-        for k, v in self.anal_config.items():
-            widget: Optional[qt.QLineEdit]
-            if v[0] == str:
-                widget = qt.QLineEdit()
-                widget.setPlaceholderText('Any string value')
-                widgets[k] = (str, widget)
-            elif v[0] == int:
-                widget = qt.QLineEdit()
-                widget.setValidator(QIntValidator())
-                widget.setPlaceholderText('Int value e.g. 1')
-                widgets[k] = (int, widget)
-            elif v[0] == float:
-                widget = qt.QLineEdit()
-                widget.setValidator(QDoubleValidator())
-                widget.setPlaceholderText('Float value e.g. 0.001')
-                widgets[k] = (float, widget)
-            elif v[0] == bool:
-                widget = qt.QLineEdit()
-                widget.setPlaceholderText('True/False')
-                widgets[k] = (bool, widget)
-            else:
-                widget = None
-            if widget:
-                if values[k] is not None:
-                    widget.setText(str(values[k]))
-                sub = qt.QVBoxLayout()
-                sub.addWidget(qt.QLabel(k))
-                sub.addWidget(widget)
-                layout.addLayout(sub)
-
-        if len(layout.children()) != 0:
-            diag = QDialog()
-            diag.setWindowTitle("Config")
-            diag.setModal(True)
-            diag.setLayout(layout)
-            diag.exec_()
-
-            for k, v in widgets.items():
-                t = v[1].text()
-                try:
-                    if t and t != '':
-                        if v[0] == bool:
-                            if t in {'true', 'True'}:
-                                values[k] = True
-                            elif t in {'false', 'False'}:
-                                values[k] = False
-                            else:
-                                values[k] = None
-                        else:
-                            values[k] = v[0](t)
-                    else:
-                        values[k] = None
-                except ValueError as e:
-                    log.exception("Failed a config value", exc_info=e)
-                    values[k] = None
-
-            self.anal_config_filled = values
+        return int(w) if w != '' else 1, int(wind) if wind != '' else 1

@@ -37,10 +37,10 @@ class FigureWrapper(FigureCanvasQTAgg):
         bg_axis = self.fig.add_subplot(334)
         line_axis = self.fig.add_subplot(3, 3, (7, 9))
 
-        data_axis.set_title("Post-Processed", fontsize='small', fontfamily='monospace')
-        og_axis.set_title("original", fontsize='small', fontfamily='monospace')
-        bg_axis.set_title("background", fontsize='small', fontfamily='monospace')
-        line_axis.set_title("line", fontsize='small', loc='left', fontfamily='monospace')
+        data_axis.set_title("Post-Processed")
+        og_axis.set_title("original")
+        bg_axis.set_title("background")
+        line_axis.set_title("line")
 
         try:
             self.fig.suptitle(
@@ -53,16 +53,17 @@ class FigureWrapper(FigureCanvasQTAgg):
 
         data, mask, err = br_reduction(image, **br_pack)
 
-        og_axis.imshow(image.get_image(), cmap="gray")
-        bg_axis.imshow(mask, cmap="coolwarm")
-        bg_axis.set_title(bg_axis.get_title() + f" mse: {err:.5e}", fontsize='small', fontfamily='monospace')
+        og_axis.imshow(image.get_image(), cmap="gray", interpolation='none')
+        bg_axis.imshow(mask, cmap="coolwarm", interpolation='none')
+        bg_axis.set_title(bg_axis.get_title() + f" mse: {err:.5e}")
 
         normalizer = norm(data)
         data_axis.imshow(
             data,
             norm=normalizer,
             cmap="gray",
-            aspect="equal"
+            aspect="equal",
+            interpolation='none'
         )
         data_axis.minorticks_on()
 
@@ -73,7 +74,7 @@ class FigureWrapper(FigureCanvasQTAgg):
         if normalizer:
             data = normalizer(data)
         else:
-            data_axis.set_title("No Post-Processing", fontsize='small', fontfamily='monospace')
+            data_axis.set_title("No Post-Processing")
 
         self.event_handler = VicarEvent(data, data_axis, line_axis, click_area)
         self.figure.set_tight_layout('true')
