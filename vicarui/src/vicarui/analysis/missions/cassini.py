@@ -1,4 +1,4 @@
-from typing import Dict, Optional, List, Tuple, Union
+from typing import Optional, List, Tuple, Union
 
 import numpy as np
 import spiceypy as spice
@@ -35,18 +35,22 @@ TARGET_ESTIMATE = "Draw Target Estimate"
 SUN_SATURN_VECTORS = "Draw Sun Saturn Vectors"
 TARGET_OVERRIDE = "Target Override"
 INSTRUMENT_OVERRIDE = "Instrument Override"
+SIZE_FRAME = "Size at plane (0: ring, 1: shadow, 2: raw)"
+CUBIC = "Show geometry in a cubic frame"
 
 
-def get_config() -> Dict:
+def get_config():
     return {
         TARGET_ESTIMATE: (bool, False),
         SUN_SATURN_VECTORS: (bool, True),
         TARGET_OVERRIDE: (str, None),
         INSTRUMENT_OVERRIDE: (str, None),
+        SIZE_FRAME: (int, 1),
+        CUBIC: (bool, True)
     }
 
 
-def get_additional_functions() -> Dict[str, str]:
+def get_additional_functions():
     return {
         "View Image Geometry": "view_geometry",
         "View Labels": "view_labels"
@@ -142,6 +146,9 @@ class ImageHelper:
     def pos(self, target: int, obs: int) -> np.ndarray:
         return spice.spkezp(target, self.time_et(), J2K, ABCORR, obs)[0]
 
+    def pos_in_sat(self, target: int, obs: int) -> np.ndarray:
+        return spice.spkezp(target, self.time_et(), SATURN_FRAME, ABCORR, obs)[0]
+
     def pos_in_frame(self, target: int, obs: int, frame: str = None) -> np.ndarray:
         if frame is not None:
             return spice.spkezp(target, self.time_et(), frame, ABCORR, obs)[0]
@@ -150,6 +157,26 @@ class ImageHelper:
 
     def saturn_equator_offset(self, target: int):
         return spice.spkezp(target, self.time_et(), SATURN_FRAME, ABCORR, SATURN_ID)[0][2]
+
+    def fbb(self):
+        _, frame, bore, _, bounds = spice.getfov(spice.bods2c(self.frame()), 4)
+        return frame, bore, bounds
+
+    def shadow_angles(self):
+        """
+        Shadow angle offset from Z and shadow angle in image
+        """
+        __sp = self.pos_in_sat(self.target_id(), SUN_ID)
+        __tp = __sp.copy()
+        __tp[2] = 0
+        __spi = self.pos_in_frame(SUN_ID, self.target_id())[0:2]
+        return np.round(
+            np.arccos(np.dot(__sp, __tp) / np.linalg.norm(__sp) / np.linalg.norm(__tp)) * spice.dpr(),
+            7
+        ), np.round(
+            np.arctan(__spi[1] / __spi[0]) * spice.dpr(),
+            7
+        )
 
 
 class Transformer:
@@ -164,39 +191,41 @@ class Transformer:
             return tuple(spice.mxv(self.transform, a) for a in args)
 
 
-def image_size_in_ring_plane_4(helper: ImageHelper) -> Tuple[float, float]:
-    """
-    Size of image in x, y in kilometers in the Saturn ring plane
-    """
-    cas = spice.spkezp(CASSINI_ID, helper.time_et(), SATURN_FRAME, ABCORR, SATURN_ID)[0]
-    _, frame, bore, _, bounds = spice.getfov(spice.bods2c(helper.frame()), 4)
-    t = Transformer(frame, SATURN_FRAME, helper.time_et())
-    cas_xy = cas[0:2]
-    cas_z = cas[2]
-    corners = list()
-    for b in bounds:
-        tb = t(b)
-        corners.append((cas_xy + tb[0:2] * (-cas_z / tb[2])))
-    corners = np.asarray(corners)
+class ShadowPlaneIntersect:
 
-    def mag(v1: np.ndarray, v2: np.ndarray):
-        x_diff = np.abs(v1[0] - v2[0])
-        y_diff = np.abs(v1[1] - v2[1])
-        return np.sqrt(np.power(x_diff, 2) + np.power(y_diff, 2))
+    def __init__(
+            self,
+            target_pos: np.ndarray,
+            sun_pos: np.ndarray,
+            cas_pos: np.ndarray
+    ):
+        z = np.linalg.norm(sun_pos[0:2])
+        x = -sun_pos[2] * sun_pos[0] / z
+        y = -sun_pos[2] * sun_pos[1] / z
+        self.cas = cas_pos
+        self.n = np.asarray([x, y, z])
+        self.top = np.dot(self.n, target_pos - cas_pos)
 
+    def __call__(self, v: np.ndarray):
+        return self.cas + v * self.top / np.dot(self.n, v)
+
+
+def max_mag(bore: np.ndarray, corners: np.ndarray):
     from itertools import combinations
-    max_sep = np.sort([mag(a, b) for a, b in combinations(corners, 2)])
+    max_sep = np.sort(np.asarray([np.linalg.norm(a - b) for a, b in combinations(corners, 2)]))
 
-    x, y = np.abs(t(bore)[0:2])
+    x, y = np.abs(bore[0:2])
 
-    first = len(max_sep) - 3
-    second = len(max_sep) - 5
+    larger = np.average(max_sep[2:4])
+    smaller = np.average(max_sep[0:2])
+
+    log.info("Corner diffs: " + ','.join([f"{a:.5e}" for a in max_sep[:-2]]))
 
     if x < y:
         # y-diff is bigger
-        return max_sep[second], max_sep[first]
+        return smaller, larger
     else:
-        return max_sep[first], max_sep[second]
+        return larger, smaller
 
 
 def norm(v: np.ndarray) -> np.ndarray:
@@ -207,7 +236,56 @@ def norm(v: np.ndarray) -> np.ndarray:
         return np.zeros(v.shape)
 
 
-def set_info(image: VicarImage, image_axis=None, analysis_axis=None, border: int = 0, **config) -> Optional[str]:
+def img_rp_size(helper: ImageHelper) -> Tuple[float, float]:
+    """
+    Size of image in x, y in kilometers in the Saturn ring plane
+    """
+    cas = spice.spkezp(CASSINI_ID, helper.time_et(), SATURN_FRAME, ABCORR, SATURN_ID)[0]
+    frame, bore, bounds = helper.fbb()
+    t = Transformer(frame, SATURN_FRAME, helper.time_et())
+    cas_xy = cas[0:2]
+    cas_z = cas[2]
+    corners = list()
+    for b in bounds:
+        tb = t(b)
+        corners.append(cas_xy + tb[0:2] * (-cas_z / tb[2]))
+
+    return max_mag(t(bore), np.asarray(corners))
+
+
+def img_sp_size(helper: ImageHelper):
+    cassini_pos = helper.pos_in_sat(CASSINI_ID, SATURN_ID)
+    sun_vec = helper.pos_in_sat(SUN_ID, helper.target_id())
+    target_pos = helper.pos_in_sat(helper.target_id(), SATURN_ID)
+
+    frame, bore, bounds = helper.fbb()
+    t = Transformer(frame, SATURN_FRAME, helper.time_et())
+
+    spi = ShadowPlaneIntersect(target_pos, sun_vec, cassini_pos)
+    corners = [spi(t(b)) for b in bounds]
+
+    return max_mag(t(bore), np.asarray(corners))
+
+
+def img_raw_size(helper: ImageHelper):
+    frame, bore, bounds = helper.fbb()
+    t = Transformer(frame, SATURN_FRAME, helper.time_et())
+    bore = t(bore)
+
+    target_pos = helper.pos_in_sat(helper.target_id(), CASSINI_ID)
+    cnt = np.linalg.norm(target_pos) / np.linalg.norm(bore)
+    corners = [t(b) * cnt for b in bounds]
+
+    return max_mag(t(bore), np.asarray(corners))
+
+
+def set_info(
+        image: VicarImage,
+        image_axis=None,
+        analysis_axis=None,
+        border: int = 0,
+        **config
+):
     try:
         load_kernels_for_image(image)
 
@@ -237,8 +315,17 @@ def set_info(image: VicarImage, image_axis=None, analysis_axis=None, border: int
         h1 = helper.saturn_equator_offset(CASSINI_ID)
         h2 = helper.saturn_equator_offset(target_id)
 
+        __sp, __spi = helper.shadow_angles()
+        __sa = f'{__sp:.2f} deg'
+        __sai = f'{__spi:.2f} deg'
+
         from ..tex import sci_5
-        title += "\n" fr"Height from equator Target: ${sci_5(h2)}\,km$ Cassini: ${sci_5(h1)}\,km$"
+        title += (
+            "\n"
+            fr"Offset from Ring Target: ${sci_5(h2)}\,km$ Cassini: ${sci_5(h1)}\,km$"
+            "\n"
+            f"Shadow-Ring angle: {__sa} Angle in image: {__sai}"
+        )
 
         if image_axis is not None:
             try:
@@ -247,7 +334,18 @@ def set_info(image: VicarImage, image_axis=None, analysis_axis=None, border: int
                 ax: Axes = image_axis
 
                 try:
-                    x_size, y_size = image_size_in_ring_plane_4(helper)
+                    x_size: float
+                    y_size: float
+                    i_name: str
+                    if helper.config[SIZE_FRAME] == 1:
+                        i_name = 'Shadow'
+                        x_size, y_size = img_sp_size(helper)
+                    elif helper.config[SIZE_FRAME] == 2:
+                        i_name = 'Target'
+                        x_size, y_size = img_raw_size(helper)
+                    else:
+                        i_name = 'Ring'
+                        x_size, y_size = img_rp_size(helper)
 
                     x_max = len(image.data[0][0])
                     y_max = len(image.data[0])
@@ -275,9 +373,24 @@ def set_info(image: VicarImage, image_axis=None, analysis_axis=None, border: int
                     from ..tex import sci_2
 
                     second_y.set_ylabel(
-                        f"At Ring intercept $(px = {sci_2(x_size / x_max)}, {sci_2(y_size / y_max)})$ KM",
+                        f"At {i_name} intercept $(px = {sci_2(x_size / x_max)}, {sci_2(y_size / y_max)})$ KM",
                         **MPL_FONT_CONFIG
                     )
+
+                    def mod_ax(axes: Axes, vertical: bool = False, **_):
+                        ax2 = axes.secondary_xaxis(
+                            location=-0.22,
+                            functions=(
+                                lambda a: y_size / y_max * a,
+                                lambda a: y_max / y_size * a
+                            ) if vertical else (
+                                lambda a: x_size / x_max * a,
+                                lambda a: x_max / x_size * a
+                            )
+                        )
+                        ax2.xaxis.set_minor_locator(AutoMinorLocator())
+
+                    analysis_axis.axes_modifier = mod_ax
                 except Exception as e:
                     log.exception("Something happened", exc_info=e)
 
@@ -303,7 +416,7 @@ def set_info(image: VicarImage, image_axis=None, analysis_axis=None, border: int
 
                     if config[TARGET_ESTIMATE]:
                         t_cassini = helper.pos_in_frame(target_id, CASSINI_ID)
-                        shape, frame_name, bore, n_vec, boundaries = spice.getfov(spice.bodn2c(frame), 10)
+                        frame_name, bore, boundaries = helper.fbb()
 
                         x_len = len(image.data[0])
                         y_len = len(image.data[0][0])
@@ -372,9 +485,9 @@ def view_geometry(*_, image: VicarImage = None, **config):
             sun: np.ndarray
 
             # Positions in the IAU_SATURN frame
-            cas, _ = spice.spkezp(CASSINI_ID, helper.time_et(), SATURN_FRAME, ABCORR, SATURN_ID)
-            target_pos, _ = spice.spkezp(helper.target_id(), helper.time_et(), SATURN_FRAME, ABCORR, SATURN_ID)
-            sun, _ = spice.spkezp(SUN_ID, helper.time_et(), SATURN_FRAME, ABCORR, helper.target_id())
+            cas = helper.pos_in_sat(CASSINI_ID, SATURN_ID)
+            target_pos = helper.pos_in_sat(helper.target_id(), SATURN_ID)
+            sun = helper.pos_in_sat(SUN_ID, helper.target_id())
 
             # Plotting wireframes is difficult
             xx, yy = np.mgrid[0:2 * spice.pi():24j, 0:0:24j]
@@ -390,15 +503,32 @@ def view_geometry(*_, image: VicarImage = None, **config):
             ring(136.78)
             ring(140.220)
 
-            # boresight and intercept of x,y plane, which should be Saturn's equatorial plane
-            _, frm, bore, _, bound = spice.getfov(spice.bods2c(helper.frame()), 4)
+            # Calculating intercepts
+            frm, bore, bounds = helper.fbb()
             t = Transformer(frm, SATURN_FRAME, helper.time_et())
             bore = t(bore)
-            intercept = cas + bore * (-cas[2] / bore[2])
-            bound_intersects = list()
-            for b in bound:
-                tb = t(b)
-                bound_intersects.append(np.column_stack((cas, cas + tb * (-cas[2] / tb[2]))) / 1000)
+            bore_intercept: np.ndarray
+            bound_intersects: List[np.ndarray] = list()
+            if helper.config[SIZE_FRAME] == 1:
+                # Shadow
+                spi = ShadowPlaneIntersect(target_pos, sun, cas)
+                bore_intercept = spi(bore)
+                bound_intersects = [np.column_stack((cas, spi(t(b)))) for b in bounds]
+            elif helper.config[SIZE_FRAME] == 2:
+                # Raw
+                cnt = np.linalg.norm(helper.pos_in_sat(helper.target_id(), CASSINI_ID)) / np.linalg.norm(bore)
+                bore_intercept = cas + bore * cnt
+                for b in bounds:
+                    tb = t(norm(b))
+                    bound_intersects.append(np.column_stack((cas, cas + tb * cnt)))
+            else:
+                # Ring plane
+                bore_intercept = bore * (-cas[2] / bore[2])
+                for b in bounds:
+                    tb = t(norm(b))
+                    pv = cas + tb * (-cas[2] / tb[2])
+                    bound_intersects.append(np.column_stack((cas, pv)))
+                bore_intercept = cas + bore_intercept
 
             # some distances
             t_dist = np.linalg.norm(target_pos)
@@ -406,7 +536,8 @@ def view_geometry(*_, image: VicarImage = None, **config):
             c_dist = np.linalg.norm(cas)
 
             # scale
-            sun, cas, target_pos, intercept = (x / 1000 for x in [sun, cas, target_pos, intercept])
+            sun, cas, target_pos, bore_intercept = (x / 1000 for x in [sun, cas, target_pos, bore_intercept])
+            bound_intersects = np.asarray(bound_intersects) / 1000
 
             # pretty labels that we don't use because the legend doesn't render properly
             from ..tex import sci_5
@@ -422,15 +553,15 @@ def view_geometry(*_, image: VicarImage = None, **config):
             )
 
             # Plots
-            ax.plot(*np.column_stack((cas, intercept)), color='gray')
+            ax.plot(*np.column_stack((cas, bore_intercept)), color='gray')
             for b in bound_intersects:
                 ax.plot(*b, color='gray', linestyle='--')
             if len(bound_intersects) == 4:
-                coord = [a[:2, 1] for a in bound_intersects]
-                for c in coord:
-                    for rc in coord[::-1]:
-                        if c is not rc:
-                            ax.plot(*np.column_stack((c, rc)), color='gray', linestyle='--')
+                coord = [a[:, 1] for a in bound_intersects]
+                from itertools import combinations
+                for c, rc in combinations(coord, 2):
+                    if c is not rc:
+                        ax.plot(*np.column_stack((c, rc)), color='gray', linestyle='--')
 
             ax.scatter(0, 0, 0, c='r', s=16, label='Saturn')
             ax.scatter(cas[0], cas[1], cas[2], c='black', label=cassini_label)
@@ -448,10 +579,12 @@ def view_geometry(*_, image: VicarImage = None, **config):
             ax.autoscale(False)
             ax.plot(*np.column_stack((target_pos, sun)), color='y')
 
-            # Box
-            # lms = [ax.get_xlim3d(), ax.get_ylim3d(), ax.get_zlim3d()]
-            # for f in [ax.set_xlim3d, ax.set_ylim3d, ax.set_zlim3d]:
-            #     f((np.min(lms), np.max(lms)))
+            if helper.config[CUBIC]:
+                diff = 1.3 * np.max([np.linalg.norm(bore_intercept - b) for b in bound_intersects[:, :, 1]])
+                i = 0
+                for f in [ax.set_xlim3d, ax.set_ylim3d, ax.set_zlim3d]:
+                    f((bore_intercept[i] - diff, bore_intercept[i] + diff))
+                    i += 1
 
             img_id = helper.id()
             info = QTextEdit()
@@ -459,9 +592,15 @@ def view_geometry(*_, image: VicarImage = None, **config):
             info.setFixedWidth(250)
             layout.addWidget(info)
 
-            def lr(left: str, right: float) -> str:
+            def lr(left: str, right) -> str:
                 # return f"{left}    __<div style='text-align: right;'>{right:.5e} km</div>__"
-                return f"{left}    *{right:.5e} km*"
+                if isinstance(right, float):
+                    right = f'{right:.5e} km'
+                return f"{left}    *{right}*"
+
+            __sp, __spi = helper.shadow_angles()
+            __sa = f'{__sp:.5f} deg'
+            __sai = f'{__spi:.5f} deg'
 
             from textwrap import dedent
             info.setMarkdown(dedent(
@@ -484,6 +623,10 @@ def view_geometry(*_, image: VicarImage = None, **config):
                 
                 #### Separation from ring plane:
                 - {lr('h:', helper.saturn_equator_offset(helper.target_id()))}
+                
+                #### Shadow:
+                - {lr('Offset in Z-direction:', __sa)}
+                - {lr('Direction in image: ', __sai)}
                 """
             ))
             info.setReadOnly(True)

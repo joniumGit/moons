@@ -1,5 +1,5 @@
 from types import ModuleType
-from typing import Optional, Dict
+from typing import Optional, Dict, Tuple, Union
 
 from vicarutil.image import VicarImage
 
@@ -25,7 +25,10 @@ def anal_module() -> Optional[ModuleType]:
     return None
 
 
-def get_config() -> Optional[Dict]:
+def get_config() -> Optional[Dict[str, Tuple[Union[str, float, int], Union[str, float, int]]]]:
+    """
+    Returns a default config for the Analysis module
+    """
     m = anal_module()
     try:
         if m:
@@ -35,17 +38,37 @@ def get_config() -> Optional[Dict]:
     return None
 
 
-def set_info(image: VicarImage, axes=None, border: int = 0, **config) -> str:
+def set_info(
+        image: VicarImage,
+        image_axis=None,
+        analysis_axis=None,
+        bg_axis=None,
+        border: int = 0,
+        **config
+) -> str:
+    """
+    Sets info for the subplot axes and returns a title
+    """
     m = anal_module()
     try:
         if m:
-            return m.set_info(image, axes, border, **config)
+            return m.set_info(
+                image,
+                image_axis=image_axis,
+                analysis_axis=analysis_axis,
+                bg_axis=bg_axis,
+                border=border,
+                **config
+            )
     except AttributeError:
         pass
-    return "Failed"
+    return ""
 
 
 def get_additional_functions() -> Optional[Dict[str, str]]:
+    """
+    Returns clear and function names for additional functions provided by the analysis module
+    """
     m = anal_module()
     try:
         if m:

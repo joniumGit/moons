@@ -44,7 +44,14 @@ class FigureWrapper(FigureCanvasQTAgg):
 
         try:
             self.fig.suptitle(
-                set_info(image.get_raw(), axes=data_axis, border=br_pack['border'] or 0, **kwargs),
+                set_info(
+                    image.get_raw(),
+                    image_axis=data_axis,
+                    analysis_axis=line_axis,
+                    bg_axis=bg_axis,
+                    border=br_pack['border'] or 0,
+                    **kwargs
+                ),
                 fontsize='small',
                 fontfamily='monospace'
             )

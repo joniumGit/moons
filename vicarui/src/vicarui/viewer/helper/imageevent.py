@@ -102,10 +102,13 @@ class VicarEvent:
                 col = int(event.xdata)
                 log.debug(f"Click detected at {row},{col}")
                 self.dpkt.configure(width, window, 2)
+                vertical = event.button == MouseButton.RIGHT
+                if self.line_axis.axes_modifier is not None:
+                    self.line_axis.axes_modifier(self.line_axis, vertical=vertical)
                 r = self.dpkt.select(
                     col,
                     row,
-                    vertical=event.button == MouseButton.RIGHT,
+                    vertical=vertical,
                     lw=1,
                     fill=False,
                 )

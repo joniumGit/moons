@@ -1,10 +1,20 @@
+from typing import Optional
+
 from matplotlib.axes import Axes
 
 MPL_FONT_CONFIG = {'fontfamily': 'monospace', 'fontsize': 'small'}
 PAD = {'pad': 3}
 
 
+class AxesModifier:
+
+    def __call__(self, axes: Axes, **kwargs):
+        pass
+
+
 class AxesWrapper(Axes):
+    axes_modifier: Optional[AxesModifier]
+
     def get_first_left(self) -> str:
         pass
 
@@ -31,6 +41,8 @@ class AxesWrapper(Axes):
 
 
 def append_to_axes():
+    Axes.axes_modifier = None
+
     def get_first_left(self) -> str:
         return self.get_title(loc='left').split("\n")[0]
 
