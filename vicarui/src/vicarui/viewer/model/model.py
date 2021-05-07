@@ -4,6 +4,7 @@ from typing import Dict, List, Optional, Callable
 from ...support import info, invoke_safe, FileType
 
 
+# Not used anymore
 class FileModel:
     file_store: Dict[FileType, List[Path]]
     callback_store: Dict[FileType, Callable[[Path], None]]

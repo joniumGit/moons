@@ -1,7 +1,7 @@
 import logging
 import sys
 from functools import wraps
-from typing import Any
+from typing import Any, Optional
 
 _logger = logging.getLogger("vicarui")
 
@@ -18,8 +18,9 @@ def warn(message: str, *args) -> None:
     _logger.warning(message, *args)
 
 
-def handle_exception(e: Exception) -> None:
-    _logger.exception("An exception occurred", exc_info=e)
+def handle_exception(e: Optional[BaseException]) -> None:
+    if e is not None:
+        _logger.exception("An exception occurred", exc_info=e)
 
 
 def log_object(o: Any, message: str = "Object information: %s") -> None:
@@ -88,6 +89,21 @@ def invoke_safe_or_default(default: Any = None):
         return log_function
 
     return safe_or_default
+
+
+def timed(f):
+    import time
+
+    @wraps(f)
+    def timing_wrapper(*args, **kwargs):
+        start = time.process_time_ns()
+        try:
+            return f(*args, **kwargs)
+        finally:
+            end = time.process_time_ns()
+            _logger.debug("Timed call for %s took %.3f ms", f.__name__, (end - start) / 1E6)
+
+    return timing_wrapper
 
 
 def aio_invoke_safe(f):

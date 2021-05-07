@@ -83,6 +83,21 @@ class Labels:
     def __str__(self):
         return self.__repr__()
 
+    def __getitem__(self, item):
+        if isinstance(item, VicarEnum):
+            return self.system[item]
+        else:
+            try:
+                return self.properties[item]
+            except KeyError:
+                try:
+                    return self.tasks[item]
+                except KeyError:
+                    try:
+                        return self.system[item]
+                    except KeyError:
+                        raise KeyError("Failed to find key: " + str(item))
+
 
 @dataclass(frozen=True)
 class VicarImageConstraints:

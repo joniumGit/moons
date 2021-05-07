@@ -13,7 +13,11 @@ class AppWindow(qt.QWidget):
         plw.setSizePolicy(qt.QSizePolicy.Expanding, qt.QSizePolicy.Expanding)
         flw.setSizePolicy(qt.QSizePolicy.MinimumExpanding, qt.QSizePolicy.Expanding)
 
-        flw.set_image_show_callback(plw.init_vicar_callback())
+        flw.show_image.connect(plw.open_image)
+
+        from functools import partial
+        plw.image_show_start.connect(partial(setattr, flw, 'busy', True))
+        plw.image_show_end.connect(partial(setattr, flw, 'busy', False))
 
         layout = qt.QHBoxLayout()
         layout.addWidget(flw)

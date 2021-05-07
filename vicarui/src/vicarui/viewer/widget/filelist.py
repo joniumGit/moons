@@ -1,143 +1,203 @@
-import asyncio
 from pathlib import Path
-from typing import Callable, Optional
+from typing import List, Dict, TypeVar
 
 from PySide2 import QtWidgets as qt
-from PySide2.QtCore import Qt
+from PySide2.QtGui import QStandardItem, QStandardItemModel, QMouseEvent
 
 from ..helper import C
-from ..model import FileModel, FileType
-from ...support import scan, debug, invoke_safe
+from ...support import debug, invoke_safe, handle_exception
+
+_T = TypeVar('_T')
 
 
-class ImageChooser(qt.QFileDialog):
-
-    def __init__(self, callback: Callable, *args, **kwargs):
-        super(ImageChooser, self).__init__(*args, **kwargs)
-        self.callback = callback
-        fd = self
-        fd.setAcceptMode(fd.AcceptOpen)
-        fd.setFileMode(fd.DirectoryOnly)
-        fd.setOption(fd.ReadOnly, True)
-        fd.setOption(fd.ShowDirsOnly, True)
-        fd.setOption(fd.HideNameFilterDetails, True)
-        fd.setOption(fd.DontUseCustomDirectoryIcons, True)
-        fd.setViewMode(fd.List)
+class _CommonConfig:
+    max_width = 250
+    min_width = 200
 
 
-class PathItem(qt.QListWidgetItem):
-    path: Path
+class CategoryItem(QStandardItem):
 
-    def __init__(self, path: Path, *args, **kwargs):
-        super(PathItem, self).__init__(*args, **kwargs)
-        self.setText(path.name)
-        self.setForeground(Qt.black)
-        self.setBackground(Qt.white)
+    def __init__(self, category: str):
+        super(CategoryItem, self).__init__()
+        self.setText(category)
+        self.setEditable(False)
+        self.setSelectable(False)
+
+
+class PathItem(QStandardItem):
+
+    def __init__(self, path: Path):
+        super(PathItem, self).__init__()
         self.path = path
+        self.setText(path.name)
+        self.setEditable(False)
+        self.setSelectable(True)
 
     def get_path(self) -> Path:
         return self.path
 
 
+class FileModel(QStandardItemModel):
+
+    def __init__(self, **files: List[Path]):
+        super(FileModel, self).__init__()
+        items = list()
+        for k, v in files.items():
+            if len(v) != 0:
+                i = CategoryItem(f"Sequence {k}")
+                for j in v:
+                    si = PathItem(j)
+                    i.appendRow(si)
+                items.append(i)
+        items.sort(key=lambda item: item.text())
+        root = self.invisibleRootItem()
+        root.appendRows(items)
+
+
+class ImageChooser(qt.QFileDialog):
+
+    def __init__(self, *args, **kwargs):
+        super(ImageChooser, self).__init__(*args, **kwargs)
+        self.setAcceptMode(self.AcceptOpen)
+        self.setFileMode(self.DirectoryOnly)
+        self.setOption(self.ReadOnly, True)
+        self.setOption(self.ShowDirsOnly, True)
+        self.setOption(self.HideNameFilterDetails, True)
+        self.setOption(self.DontUseCustomDirectoryIcons, True)
+        self.setViewMode(self.List)
+
+
+class Spacer(qt.QSpacerItem):
+    def __init__(self):
+        super(Spacer, self).__init__(
+            _CommonConfig.min_width,
+            2,
+            hData=qt.QSizePolicy.Minimum,
+            vData=qt.QSizePolicy.Maximum
+        )
+
+
+class Button(qt.QPushButton):
+    from ...support.signals import SimpleSignal
+
+    clicked: SimpleSignal
+
+    def __init__(self, text: str):
+        super(Button, self).__init__(text=text)
+        self.setFixedWidth(_CommonConfig.max_width)
+        self.setFixedHeight(25)
+        self.setSizePolicy(qt.QSizePolicy.Minimum, qt.QSizePolicy.Minimum)
+
+
+class Label(qt.QLabel):
+
+    def __init__(self, text: str):
+        super(Label, self).__init__(text=text)
+        self.setFixedWidth(_CommonConfig.max_width)
+        self.setFixedHeight(25)
+        self.setSizePolicy(qt.QSizePolicy.Minimum, qt.QSizePolicy.Minimum)
+
+
 class FileListWidget(qt.QWidget):
+    from ...support.signals import typedsignal
+
+    show_image = typedsignal(Path)
     model: FileModel
-    max_width = 250
-    min_width = 200
-    list_height = 400
-
-    im_show: Optional[Callable[[Path], None]] = None
-    lbl_show: Optional[Callable[[Path], None]] = None
-
-    def set_image_show_callback(self, c: Callable[[Path], None]):
-        self.im_show = c
-
-    def set_lbl_show_callback(self, c: Callable[[Path], None]):
-        self.lbl_show = c
+    _task = None
+    _busy = False
 
     def __init__(self, *args, **kwargs):
         super(FileListWidget, self).__init__(*args, **kwargs)
-        self.model = FileModel()
-        self.__create_ui()
-
-    @staticmethod
-    def __init_list() -> qt.QListWidget:
-        lst = qt.QListWidget()
-        lst.setMinimumWidth(FileListWidget.min_width)
-        lst.setMinimumHeight(FileListWidget.list_height * 2)
-        lst.setSizePolicy(qt.QSizePolicy.MinimumExpanding, qt.QSizePolicy.Expanding)
-        return lst
-
-    @staticmethod
-    def __set_small_defaults(o: qt.QWidget) -> None:
-        o.setFixedWidth(FileListWidget.max_width)
-        o.setFixedHeight(25)
-        o.setSizePolicy(qt.QSizePolicy.Minimum, qt.QSizePolicy.Minimum)
-
-    @staticmethod
-    def __create_spacer() -> qt.QSpacerItem:
-        return qt.QSpacerItem(
-            FileListWidget.min_width,
-            2,
-            hData=qt.QSizePolicy.Policy.Minimum,
-            vData=qt.QSizePolicy.Policy.Minimum
-        )
-
-    def __create_ui(self):
         layout = qt.QVBoxLayout()
         layout.setSpacing(2)
 
         self.setLayout(layout)
 
-        load_btn = qt.QPushButton(text="Load files")
-        select_btn = qt.QPushButton(text="Show")
-        clear_btn = qt.QPushButton(text="Clear")
+        load_btn = Button("Load files")
+        show_btn = Button("Show")
+        clear_btn = Button("Clear")
+        item_label = Label("Image files")
+        item_view = qt.QTreeView()
 
-        img_text = qt.QLabel(text="Image files")
-        img_list = FileListWidget.__init_list()
+        item_view.setHeaderHidden(True)
 
-        FileListWidget.__set_small_defaults(select_btn)
-        FileListWidget.__set_small_defaults(load_btn)
-        FileListWidget.__set_small_defaults(clear_btn)
-        FileListWidget.__set_small_defaults(img_text)
-
-        layout.addWidget(img_text)
-        layout.addWidget(img_list)
-
-        layout.addSpacerItem(FileListWidget.__create_spacer())
+        layout.addWidget(item_label)
+        layout.addWidget(item_view)
+        layout.addSpacerItem(Spacer())
         layout.addWidget(load_btn, alignment=C)
         layout.addWidget(clear_btn, alignment=C)
-        layout.addWidget(select_btn, alignment=C)
+        layout.addWidget(show_btn, alignment=C)
 
-        select_btn.clicked.connect(self.show_file)
+        show_btn.clicked.connect(self.show_file)
         load_btn.clicked.connect(self.pick_dir)
-        self.model.set_callback(FileType.IMAGE, lambda x: img_list.addItem(PathItem(x)))
-        self.model.set_clear_callback(self.clear)
         clear_btn.clicked.connect(self.clear)
 
-        self.select_btn = select_btn
+        self.show_btn = show_btn
         self.load_btn = load_btn
-        self.img_list = img_list
+        self.item_view = item_view
 
-        self.img_list.mouseDoubleClickEvent = self.show_on_dbl
+        self.model = QStandardItemModel()
+        self.model.invisibleRootItem()
+        self.item_view.mouseDoubleClickEvent = self.show_on_dbl
+
+    @property
+    def busy(self):
+        return self._busy
+
+    @busy.setter
+    def busy(self, busy: bool):
+        if busy:
+            self._busy = True
+            self.show_btn.setEnabled(False)
+        else:
+            self._busy = False
+            self.show_btn.setEnabled(True)
 
     @invoke_safe
     def show_file(self):
-        selected_img = self.img_list.selectedItems()
-        if self.im_show is not None and selected_img is not None and len(selected_img) > 0:
-            self.im_show(selected_img[0].path)
-            debug("Image selected: %s", str(selected_img[0].path))
+        try:
+            selected_img: PathItem = self.model.itemFromIndex(self.item_view.selectedIndexes()[0])
+            if selected_img is not None:
+                debug("Image selected: %s", str(selected_img.get_path()))
+                self.show_image.emit(selected_img.get_path())
+        except IndexError:
+            pass
 
     @invoke_safe
     def clear(self):
         debug("Clearing lists")
-        self.img_list.clear()
+        self.model.clear()
+
+    @invoke_safe
+    def files_callback(self, files: Dict[str, List[Path]]):
+        self._task = None
+        self.model = FileModel(**files)
+        self.item_view.setModel(self.model)
+        self.load_btn.setEnabled(True)
 
     @invoke_safe
     def pick_dir(self) -> None:
         debug("Picking files")
-        selected = ImageChooser.getExistingDirectory()
-        debug("Picked dir %s", str(selected))
-        self.model.accept_files(asyncio.run(scan(selected)))
+        selected = ImageChooser.getExistingDirectory(caption="Select image directory")
+        if selected is not None:
+            self.load_btn.setEnabled(False)
+            debug("Picked dir %s", str(selected))
+            from ...support import FileTask
+            self._task = FileTask(selected, self.files_callback)
+            self._task.start()
 
-    def show_on_dbl(self, *_, **__) -> None:
-        self.show_file()
+    @invoke_safe
+    def show_on_dbl(self, event: QMouseEvent) -> None:
+        try:
+            i = self.item_view.indexAt(event.pos())
+            if i is not None:
+                item: QStandardItem = self.model.itemFromIndex(i)
+                if item.hasChildren():
+                    if self.item_view.isExpanded(i):
+                        self.item_view.collapse(i)
+                    else:
+                        self.item_view.expand(i)
+                else:
+                    self.show_file()
+        except Exception as e:
+            handle_exception(e)
