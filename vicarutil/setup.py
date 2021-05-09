@@ -20,10 +20,6 @@ setuptools.setup(
     install_requires=[
         "numpy"
     ],
-    extras_require={
-        "spice": ["spiceypy", "matplotlib"],
-        "dev": ["pytest", "spiceypy", "matplotlib"]
-    },
     package_dir={"": "src"},
     packages=setuptools.find_packages(where="src"),
     python_requires=">=3.7",

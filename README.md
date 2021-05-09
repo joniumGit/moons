@@ -23,3 +23,7 @@ Parses [VICAR2](https://www-mipl.jpl.nasa.gov/external/VICAR_file_fmt.pdf) file 
 [VicarUI](vicarui) - viewer and analysis for images
 
 [VicarUtil](vicarutil) - reading images
+
+Easiest to install with ``pip install -e vcarutil`` and ``pip install -e vcarui`` in a Python virtual environment. 
+
+[PyCharm](https://www.jetbrains.com/pycharm/) is highly recommended if you want need to make any changes. 

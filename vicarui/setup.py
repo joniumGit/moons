@@ -18,13 +18,16 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     install_requires=[
+        "vicarutil",
         "PySide2",
         "matplotlib",
-        "vicarutil",
         "astropy",
         "numpy",
         "scikit-learn"
     ],
+    extras_require={
+        "full": ["spiceypy"]
+    },
     package_dir={"": "src"},
     packages=setuptools.find_packages(where="src"),
     python_requires=">=3.7",
