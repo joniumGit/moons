@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="vicarui",
-    version="0.0.1",
+    version="0.0.2",
     author="joniumGit",
     author_email="52005121+joniumGit@users.noreply.github.com",
     description="Utilities for reading Vicar image files",
@@ -23,9 +23,7 @@ setuptools.setup(
         "vicarutil",
         "astropy",
         "numpy",
-        "scikit-image",
         "scikit-learn"
-
     ],
     package_dir={"": "src"},
     packages=setuptools.find_packages(where="src"),

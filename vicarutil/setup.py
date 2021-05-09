@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="vicarutil",
-    version="0.1.0",
+    version="0.2.0",
     author="joniumGit",
     author_email="52005121+joniumGit@users.noreply.github.com",
     description="Utilities for reading Vicar image files",
@@ -21,7 +21,8 @@ setuptools.setup(
         "numpy"
     ],
     extras_require={
-        "spice": ["spiceypy", "matplotlib"]
+        "spice": ["spiceypy", "matplotlib"],
+        "dev": ["pytest", "spiceypy", "matplotlib"]
     },
     package_dir={"": "src"},
     packages=setuptools.find_packages(where="src"),

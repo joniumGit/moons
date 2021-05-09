@@ -75,6 +75,9 @@ class PlotWidget(QWidget):
         self.setLayout(layout)
         self.image = None
 
+        from ...analysis import register_mission_listener
+        register_mission_listener(lambda _: self.reload_image())
+
     def get_config(self):
         return self.config.get_config()
 

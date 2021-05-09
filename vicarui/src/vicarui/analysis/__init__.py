@@ -1,5 +1,5 @@
 from types import ModuleType
-from typing import Optional, Dict, Tuple, Union
+from typing import Optional, Dict, Tuple, Union, Callable, List
 
 from vicarutil.image import VicarImage
 
@@ -8,20 +8,46 @@ from .kernels import provide_kernels
 from .reduction import br_reduction
 from .wrapper import ImageWrapper
 
-SELECTED: str = "cassini"
+
+class _Holder(object):
+    mission: str = "cassini"
+    listeners: List[Callable[[str], None]] = list()
+
+
+def select_mission(mission: str):
+    if mission is None:
+        mission = "empty"
+    mission = mission.strip()
+    _Holder.mission = mission
+    for listener in _Holder.listeners:
+        listener(mission)
+
+
+def get_mission() -> str:
+    return _Holder.mission
+
+
+def register_mission_listener(listener: Callable[[str], None]):
+    _Holder.listeners.append(listener)
+
+
+def remove_mission_listener(listener: Callable[[str], None]):
+    _Holder.listeners.remove(listener)
 
 
 def anal_module() -> Optional[ModuleType]:
     import importlib
     try:
-        if '.' in SELECTED:
-            __i = importlib.import_module(f"{SELECTED}")
+        mission = get_mission()
+        if '.' in mission:
+            __i = importlib.import_module(f"{mission}")
         else:
-            __i = importlib.import_module(f".missions.{SELECTED}", package=__package__)
+            __i = importlib.import_module(f".missions.{mission}", package=__package__)
         return __i
     except (ImportError, AttributeError) as e:
         from .internal import log
         log.exception("Exception in mission fetching", exc_info=e)
+        select_mission("empty")
     return None
 
 

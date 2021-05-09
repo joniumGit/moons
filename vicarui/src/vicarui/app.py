@@ -73,7 +73,7 @@ def init(ns: Namespace = None) -> None:
     if args.mission is not None:
         from . import analysis as anal
         info(f"Mission: {args.mission[0]}")
-        anal.SELECTED = args.mission[0].strip()
+        anal.select_mission(args.mission[0])
 
     from .support import append_to_axes
     append_to_axes()

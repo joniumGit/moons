@@ -10,7 +10,7 @@ from .wrapper import ImageWrapper
 from ..support import info
 
 
-def ransac(
+def polyfit(
         x: np.ndarray,
         y: np.ndarray,
         out: np.ndarray,
@@ -109,11 +109,11 @@ def br_reduction(
 
             x = np.arange(0, len(img[0]))
             for i, line in enumerate(img):
-                mse.append(ransac(x, line, minus[i], degree))
+                mse.append(polyfit(x, line, minus[i], degree))
 
             x = np.arange(0, len(img))
             for i, line in enumerate(img.T):
-                mse.append(ransac(x, line, minus.T[i], degree))
+                mse.append(polyfit(x, line, minus.T[i], degree))
 
             mse = np.median(mse)
             minus = minus / 2
