@@ -10,7 +10,7 @@ from the images and analyze shadow contrast.
 
 ## Info
 
-Needs Cassini mission kernels in `kernels/` directory to function
+Needs Cassini mission kernels to provide mission data
 > Not here since uncompressed 37Gb or compressed 16Gb
 
 Uses [NASA NAIF Spice](https://naif.jpl.nasa.gov/naif/) which is used through
@@ -24,6 +24,6 @@ Parses [VICAR2](https://www-mipl.jpl.nasa.gov/external/VICAR_file_fmt.pdf) file 
 
 [VicarUtil](vicarutil) - reading images
 
-Easiest to install with ``pip install -e vcarutil`` and ``pip install -e vcarui`` in a Python virtual environment. 
+Easiest to install with ``pip install -e vicarutil`` and ``pip install -e vicarui`` in a Python virtual environment. 
 
 [PyCharm](https://www.jetbrains.com/pycharm/) is highly recommended if you want need to make any changes. 
