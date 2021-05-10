@@ -1,5 +1,7 @@
 # Ring moons of Saturn
 
+![](.github/images/sample.png)
+
 ## General
 
 This packages/program was created for my bachelor's thesis for the __Astronomy department__ at __University of Oulu,
