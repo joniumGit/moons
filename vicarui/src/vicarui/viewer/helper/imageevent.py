@@ -91,7 +91,7 @@ class VicarEvent:
                 self.line_axis.clear_lines()
             self.line_axis.figure.canvas.draw()
         elif event.inaxes == self.data_axis:
-            self.line_axis.clear()
+            self.clear_line_soft()
             if self.rect:
                 self.rect.remove()
                 self.rect = None
@@ -126,8 +126,12 @@ class VicarEvent:
                 self.line_has_data = False
             self.line_axis.refresh()
 
-    def clear_line(self):
+    def clear_line_soft(self):
         self.line_axis.clear()
+        self.line_axis.secondary_yaxis(location="right")
+
+    def clear_line(self):
+        self.clear_line_soft()
         self.line_has_data = False
         self.fit_x_start = -1
         self.fit_x_end = -1
