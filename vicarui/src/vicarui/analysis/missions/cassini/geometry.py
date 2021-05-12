@@ -1,5 +1,5 @@
 from .config import *
-from .funcs import rs, get_camera_intersects, scale_to_rs
+from .funcs import rs
 from .helpers import ImageHelper
 from ...kernels import load_kernels_for_image, release_kernels
 
@@ -55,6 +55,7 @@ def view_geometry(*_, image: VicarImage = None, **config):
         from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT
         from matplotlib.pyplot import Figure
         from mpl_toolkits.mplot3d import Axes3D
+        from .entity import PlotPacket
 
         d = QDialog()
         d.setWindowTitle("Image Geometry")
@@ -74,81 +75,16 @@ def view_geometry(*_, image: VicarImage = None, **config):
             load_kernels_for_image(image)
             helper = ImageHelper(image, **config)
 
-            cas: np.ndarray
-            target_pos: np.ndarray
-            sun: np.ndarray
+            pp = PlotPacket(helper, ax)
+            pp.plot_saturn()
+            pp.plot_target()
+            pp.plot_sun()
+            pp.plot_camera()
+            pp.label()
 
-            # Positions in the IAU_SATURN frame
-            cas = helper.pos_in_sat(CASSINI_ID, SATURN_ID)
-            target_pos = helper.pos_in_sat(helper.target_id(), SATURN_ID)
-            sun = helper.pos_in_sat(SUN_ID, helper.target_id())
-
-            # rings
-            plot_rings([74.5e3, 92e3, 117.580e3, 122.2e3, 136.78e3, 140.220e3], ax)
-
-            # some distances
-            sat_target_dist = np.linalg.norm(target_pos)
-            target_cas_dist = np.linalg.norm(helper.pos(helper.target_id(), CASSINI_ID))
-            sat_cas_dist = np.linalg.norm(cas)
-
-            fg = 0
-            bg = 10
-            mid = 5
-
-            # scale
-            sun, cas, target_pos = (scale_to_rs(x) for x in [sun, cas, target_pos])
-
-            # Camera
-            bore, bounds = get_camera_intersects(helper)
-
-            # Plots
-            ax.plot(*np.column_stack((cas, bore)), color=CAMERA_COLOR, zorder=mid)
-            for b in bounds:
-                ax.plot(*b, color=CAMERA_COLOR, linestyle='--', zorder=bg, alpha=0.65)
-            if len(bounds) == 4:
-                coord = [a[:, 1] for a in bounds]
-                from itertools import combinations
-                for c, rc in combinations(coord, 2):
-                    if c is not rc:
-                        ax.plot(*np.column_stack((c, rc)), color=CAMERA_COLOR, linestyle='--', zorder=fg)
-
-            # ax.scatter(0, 0, 0, c=SATURN_COLOR, s=16)
-
-            # Saturn
-            plot_sphere((0, 0, 0), 1, ax, SATURN_COLOR)
-
-            # cassini
-            ax.scatter(cas[0], cas[1], cas[2], c=CASSINI_COLOR, zorder=fg)
-            ax.plot([cas[0], cas[0]], [cas[1], cas[1]], [0, cas[2]], c=CASSINI_COLOR, zorder=mid)
-
-            # Target
-            plot_sphere(
-                (target_pos[0], target_pos[1], target_pos[2]),
-                np.average(scale_to_rs(spice.bodvcd(helper.target_id(), 'RADII', 3)[1])),
-                ax,
-                TARGET_COLOR
-            )
-            # ax.scatter(target_pos[0], target_pos[1], target_pos[2], c=TARGET_COLOR, zorder=fg)
-            ax.plot([0, target_pos[0]], [0, target_pos[1]], [0, target_pos[2]], c=SATURN_COLOR, zorder=mid)
-
-            # Labels
-            ax.set_xlabel(r"X ($R_s$)")
-            ax.set_ylabel(r"Y ($R_s$)")
-            ax.set_zlabel(r"Z ($R_s$)")
-
-            # What a bummer the quiver values seem to show the wrong direction so using this ad-hoc solution
-            ax.autoscale(False)
-            ss = scale_to_rs(sun)
-            sss = ss * 1 / np.linalg.norm(ss)
-            ax.plot(*np.column_stack((target_pos, sss)), color=SUN_COLOR, zorder=fg)
-
-            # Take us to a cubic view
-            if helper.config[CUBIC]:
-                diff = 1.2 * np.max([np.linalg.norm(bore - b) for b in bounds[:, :, 1]])
-                i = 0
-                for f in [ax.set_xlim3d, ax.set_ylim3d, ax.set_zlim3d]:
-                    f((bore[i] - diff, bore[i] + diff))
-                    i += 1
+            sat_cas_dist = np.linalg.norm(helper.pos_in_sat(SATURN_ID, CASSINI_ID))
+            target_cas_dist = np.linalg.norm(helper.pos_in_sat(helper.target_id(), CASSINI_ID))
+            sat_target_dist = np.linalg.norm(helper.pos_in_sat(SATURN_ID, helper.target_id()))
 
             img_id = helper.id
             info = QTextEdit()
@@ -163,9 +99,11 @@ def view_geometry(*_, image: VicarImage = None, **config):
                     right = f'{right:.5e} km'
                 return f"{left}    *{right}*"
 
-            __sp, __spi = helper.shadow_angles
-            __sa = f'{__sp:.5f} deg'
-            __sai = f'{__spi:.5f} deg'
+            sun_to_rings, shadow_in_image, shadow_to_bore = helper.shadow_angles
+
+            ang_xy = f'{sun_to_rings:.5f} deg'
+            ang_img = f'{shadow_in_image:.5f} deg'
+            ang_bore = f'{shadow_to_bore:.5f} deg'
 
             from textwrap import dedent
             info.setMarkdown(dedent(
@@ -190,8 +128,9 @@ def view_geometry(*_, image: VicarImage = None, **config):
                 - {lr('h:', helper.saturn_equator_offset(helper.target_id()))}
 
                 #### Shadow:
-                - {lr('Offset in Z-direction:', __sa)}
-                - {lr('Direction in image: ', __sai)}
+                - {lr('Angle to XY-plane:', ang_xy)}
+                - {lr('Direction in image:', ang_img)}
+                - {lr('Angle to Bore vector:', ang_bore)}
                 """
             ))
             info.setReadOnly(True)

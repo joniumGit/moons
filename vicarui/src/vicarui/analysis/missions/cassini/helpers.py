@@ -1,5 +1,7 @@
 from functools import cached_property
 
+import spiceypy
+
 from .config import *
 
 
@@ -142,16 +144,28 @@ class ImageHelper:
 
         - Shadow angle from xy plane
         - Shadow angle in image
+        - Shadow angle to image plane at target
         """
-        __sp = self.pos_in_sat(self.target_id(), SUN_ID)
-        __tp = __sp.copy()
-        __tp[2] = 0
-        __spi = self.pos_in_frame(SUN_ID, self.target_id())[0:2]
+        bore = -Transformer(self.frame, SATURN_FRAME, self.time_et)(self.fbb[1])
+        pos_raw = self.pos_in_sat(self.target_id(), SUN_ID)
+        pos_xy = np.asarray([*pos_raw[0:2], 0])
+        pos_frame = self.pos_in_frame(SUN_ID, self.target_id())[0:2]
         return np.round(
-            np.arccos(np.dot(__sp, __tp) / np.linalg.norm(__sp) / np.linalg.norm(__tp)) * spice.dpr(),
+            np.arccos(
+                np.dot(pos_raw, pos_xy)
+                / np.linalg.norm(pos_raw)
+                / np.linalg.norm(pos_xy)
+            ) * spice.dpr(),
             7
         ), np.round(
-            np.arctan(__spi[1] / __spi[0]) * spice.dpr(),
+            np.arctan(pos_frame[1] / pos_frame[0]) * spice.dpr(),
+            7
+        ), np.round(
+            np.arccos(
+                np.dot(bore, pos_raw)
+                / np.linalg.norm(bore)
+                / np.linalg.norm(pos_raw)
+            ) * spiceypy.dpr(),
             7
         )
 
@@ -179,24 +193,21 @@ class Transformer:
 
 class ShadowPlaneIntersect:
     """
-    Transforms to shadow plane
+    Transforms a vector to point to the nearest point to shadow CASSINI ONLY
     """
 
-    def __init__(
-            self,
-            target_pos: np.ndarray,
-            sun_pos: np.ndarray,
-            cas_pos: np.ndarray
-    ):
-        z = np.linalg.norm(sun_pos[0:2])
-        x = -sun_pos[2] * sun_pos[0] / z
-        y = -sun_pos[2] * sun_pos[1] / z
-        self.cas = cas_pos
-        self.n = np.asarray([x, y, z])
-        self.top = np.dot(self.n, target_pos - cas_pos)
+    def __init__(self, helper: ImageHelper):
+        cas = helper.pos_in_sat(CASSINI_ID, SATURN_ID)
+        target = helper.pos_in_sat(helper.target_id(), SATURN_ID)
+        sv = helper.pos_in_sat(SUN_ID, helper.target_id())
+        self.cas = cas
+        self.a_ratio = sv[1] / sv[0]
+        self.y_diff = target[1] - cas[1]
+        self.x_diff_part = self.a_ratio * (cas[0] - target[0])
 
     def __call__(self, v: np.ndarray):
-        return self.cas + v * self.top / np.dot(self.n, v)
+        times = (self.y_diff + self.x_diff_part) / (v[1] - self.a_ratio * v[0])
+        return self.cas + times * v
 
 
 __all__ = ['ImageHelper', 'Transformer', 'ShadowPlaneIntersect']

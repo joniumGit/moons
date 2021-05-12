@@ -10,7 +10,7 @@ from .wrapper import ImageWrapper
 from ..support import info
 
 
-def polyfit(
+def halfToMask(
         x: np.ndarray,
         y: np.ndarray,
         out: np.ndarray,
@@ -20,10 +20,20 @@ def polyfit(
         PolynomialFeatures(degree=degree),
         LinearRegression()
     )
-    pipe.fit(x[..., None], y)
-    ny = pipe.predict(x[..., None])
-    mse = mean_squared_error(y, ny)
-    np.add(ny, out, out=out)
+    mask: np.ndarray = np.logical_and(np.isfinite(y), np.isfinite(x))
+    if np.alltrue(mask):
+        pipe.fit(x[..., None], y)
+        ny = pipe.predict(x[..., None]) / 2
+        mse = mean_squared_error(y, ny)
+        np.add(ny, out, out=out)
+    else:
+        x = x[mask]
+        y = y[mask]
+        pipe.fit(x[..., None], y)
+        ny = pipe.predict(x[..., None]) / 2
+        mse = mean_squared_error(y, ny)
+        for i, v in zip(np.argwhere(mask), ny):
+            out[i] += v
     return mse
 
 
@@ -31,12 +41,12 @@ def remove_invalid(image: ImageWrapper) -> np.ndarray:
     img = image.get_image().copy()
     indices = list()
     for _i, line in enumerate(img):
-        if np.alltrue(np.isclose(line, np.average(line))):
+        if np.alltrue(np.isclose(np.average(line), line)):
             indices.append(_i)
     if len(indices) != 0:
         image.invalid_indices = np.asarray(indices)
         return np.delete(img, indices, axis=0)
-    img[np.logical_not(np.isfinite(img))] = np.NINF
+    img[np.logical_not(np.isfinite(img))] = np.average(img[np.isfinite(img)])
     return img
 
 
@@ -100,9 +110,6 @@ def br_reduction(
         )
         mse = image.get_mse() or 0.0
 
-    if normalize:
-        img = (img - np.min(img)) * 1 / (np.max(img) - np.min(img))
-
     try:
         if reduce and gen_bg:
             from collections import deque
@@ -112,14 +119,13 @@ def br_reduction(
 
             x = np.arange(0, len(img[0]))
             for i, line in enumerate(img):
-                mse.append(polyfit(x, line, minus[i], degree))
+                mse.append(halfToMask(x, line, minus[i], degree))
 
             x = np.arange(0, len(img))
             for i, line in enumerate(img.T):
-                mse.append(polyfit(x, line, minus.T[i], degree))
+                mse.append(halfToMask(x, line, minus.T[i], degree))
 
             mse = np.median(mse)
-            minus = minus / 2
 
             if old:
                 from sklearn.linear_model import RANSACRegressor

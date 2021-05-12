@@ -39,15 +39,17 @@ def set_info(
             h1 = helper.saturn_equator_offset(CASSINI_ID)
             h2 = helper.saturn_equator_offset(target_id)
 
-            __sp, __spi = helper.shadow_angles
-            __sa = f'{__sp:.2f} deg'
-            __sai = f'{__spi:.2f} deg'
+            sun_to_rings, shadow_in_image, shadow_to_bore = helper.shadow_angles
+
+            ang_xy = f'{sun_to_rings:.2f} deg'
+            ang_img = f'{shadow_in_image:.2f} deg'
+            ang_bore = f'{shadow_to_bore:.2f} deg'
 
             title += (
                 "\n"
                 fr"Target from Ring Plane: ${sci_2(h2):}\,km$ Cassini from Ring Plane: ${sci_2(h1)}\,km$"
                 "\n"
-                f"Shadow-Ring angle: {__sa} Angle in image: {__sai}"
+                f"Shadow angle in Image: {ang_img}, to Bore: {ang_bore}, to XY: {ang_xy}"
             )
         except Exception as e:
             log.warning("Failed to find some data", exc_info=e)

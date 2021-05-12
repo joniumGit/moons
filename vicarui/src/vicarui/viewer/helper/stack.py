@@ -10,9 +10,9 @@ from ...support import start_progress, stop_progress
 
 
 def stack(flw: FileListWidget, paths: List[Path]) -> ImageWrapper:
-    flw.busy = True
-    start_progress()
     try:
+        flw.busy = True
+        start_progress()
         images = list()
         for p in paths:
             images.append(read_image(p))
@@ -30,7 +30,9 @@ def stack(flw: FileListWidget, paths: List[Path]) -> ImageWrapper:
                     line.fill(np.NINF)
         data = np.asarray([img.data / len(images) for img in images])
         image.data = np.sum(data, axis=0, dtype='float64', where=np.isfinite(data))
+        flw.busy = False
+        stop_progress()
         return ImageWrapper(image)
-    finally:
+    except Exception:
         flw.busy = False
         stop_progress()

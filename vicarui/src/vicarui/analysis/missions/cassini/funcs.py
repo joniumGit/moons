@@ -54,14 +54,9 @@ def img_sp_size(helper: ImageHelper):
     """
     Size in 'Shadow plane'
     """
-    cassini_pos = helper.pos_in_sat(CASSINI_ID, SATURN_ID)
-    sun_vec = helper.pos_in_sat(SUN_ID, helper.target_id())
-    target_pos = helper.pos_in_sat(helper.target_id(), SATURN_ID)
-
     frame, bore, bounds = helper.fbb
     t = Transformer(frame, SATURN_FRAME, helper.time_et)
-
-    spi = ShadowPlaneIntersect(target_pos, sun_vec, cassini_pos)
+    spi = ShadowPlaneIntersect(helper)
     corners = [spi(t(b)) for b in bounds]
 
     return max_mag(t(bore), np.asarray(corners))
@@ -93,11 +88,9 @@ def scale_to_rs(v: np.ndarray) -> np.ndarray:
 
 def get_camera_intersects(helper: ImageHelper):
     """
-    Where should our camera be?
+    Where should our camera be? in RS
     """
-    sun_pos = helper.pos_in_sat(SUN_ID, helper.target_id())
     cassini_pos = helper.pos_in_sat(CASSINI_ID, SATURN_ID)
-    target_pos = helper.pos_in_sat(helper.target_id(), SATURN_ID)
 
     # Calculating intercepts
     frm, bore, bounds = helper.fbb
@@ -107,7 +100,7 @@ def get_camera_intersects(helper: ImageHelper):
     bound_intersects: Union[List[np.ndarray], np.ndarray] = list()
     if helper.config[SIZE_FRAME] == 1:
         # Shadow
-        spi = ShadowPlaneIntersect(target_pos, sun_pos, cassini_pos)
+        spi = ShadowPlaneIntersect(helper)
         bore_intercept = spi(bore)
         bound_intersects = [np.column_stack((cassini_pos, spi(t(b)))) for b in bounds]
     elif helper.config[SIZE_FRAME] == 2:

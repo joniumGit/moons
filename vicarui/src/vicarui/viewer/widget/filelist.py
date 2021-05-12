@@ -159,13 +159,13 @@ class FileListWidget(qt.QWidget):
     @invoke_safe
     def show_file(self):
         try:
-            if len(self.item_view.selectedIndexes()) != 1:
+            if len(self.item_view.selectedIndexes()) > 1:
                 selected: List[Path] = [
                     self.model.itemFromIndex(i).get_path() for i in self.item_view.selectedIndexes()
                 ]
                 debug("Selected %d files", len(selected))
                 self.show_multiple.emit(selected)
-            else:
+            elif len(self.item_view.selectedIndexes()) == 1:
                 selected_img: PathItem = self.model.itemFromIndex(self.item_view.selectedIndexes()[0])
                 if selected_img is not None:
                     debug("Image selected: %s", str(selected_img.get_path()))
@@ -189,7 +189,7 @@ class FileListWidget(qt.QWidget):
     def pick_dir(self) -> None:
         debug("Picking files")
         selected = ImageChooser.getExistingDirectory(caption="Select image directory")
-        if selected is not None:
+        if selected is not None and selected != "":
             self.load_btn.setEnabled(False)
             debug("Picked dir %s", str(selected))
             from ...support import FileTask
