@@ -162,6 +162,9 @@ class Transformer:
     """
 
     def __init__(self, from_frame: str, to_frame: str, et: float):
+        self.from_frame = from_frame
+        self.to_frame = from_frame
+        self.et = et
         self.transform = spice.pxform(from_frame, to_frame, et)
 
     def __call__(self, *args: np.ndarray) -> Union[np.ndarray, Tuple[np.ndarray, ...]]:
@@ -169,6 +172,9 @@ class Transformer:
             return spice.mxv(self.transform, args[0])
         else:
             return tuple(spice.mxv(self.transform, a) for a in args)
+
+    def __neg__(self):
+        return Transformer(self.to_frame, self.from_frame, self.et)
 
 
 class ShadowPlaneIntersect:

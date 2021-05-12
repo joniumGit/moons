@@ -164,3 +164,12 @@ class VicarImage:
     def has_binary_prefix(self):
         """True if this object has binary prefix"""
         return self.binary_prefix is not None
+
+    def __getitem__(self, item):
+        try:
+            return self.labels[item]
+        except KeyError as e:
+            if self.eol_labels is not None:
+                return self.eol_labels[item]
+            else:
+                raise e

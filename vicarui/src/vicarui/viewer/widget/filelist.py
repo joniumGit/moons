@@ -102,6 +102,8 @@ class FileListWidget(qt.QWidget):
     from ...support.signals import typedsignal
 
     show_image = typedsignal(Path)
+    show_multiple = typedsignal(list)
+
     model: FileModel
     _task = None
     _busy = False
@@ -120,6 +122,8 @@ class FileListWidget(qt.QWidget):
         item_view = qt.QTreeView()
 
         item_view.setHeaderHidden(True)
+        item_view.mouseDoubleClickEvent = self.show_on_dbl
+        item_view.setSelectionMode(item_view.SelectionMode.ExtendedSelection)
 
         layout.addWidget(item_label)
         layout.addWidget(item_view)
@@ -138,7 +142,6 @@ class FileListWidget(qt.QWidget):
 
         self.model = QStandardItemModel()
         self.model.invisibleRootItem()
-        self.item_view.mouseDoubleClickEvent = self.show_on_dbl
 
     @property
     def busy(self):
@@ -156,10 +159,17 @@ class FileListWidget(qt.QWidget):
     @invoke_safe
     def show_file(self):
         try:
-            selected_img: PathItem = self.model.itemFromIndex(self.item_view.selectedIndexes()[0])
-            if selected_img is not None:
-                debug("Image selected: %s", str(selected_img.get_path()))
-                self.show_image.emit(selected_img.get_path())
+            if len(self.item_view.selectedIndexes()) != 1:
+                selected: List[Path] = [
+                    self.model.itemFromIndex(i).get_path() for i in self.item_view.selectedIndexes()
+                ]
+                debug("Selected %d files", len(selected))
+                self.show_multiple.emit(selected)
+            else:
+                selected_img: PathItem = self.model.itemFromIndex(self.item_view.selectedIndexes()[0])
+                if selected_img is not None:
+                    debug("Image selected: %s", str(selected_img.get_path()))
+                    self.show_image.emit(selected_img.get_path())
         except IndexError:
             pass
 

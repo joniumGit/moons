@@ -5,7 +5,7 @@ from vicarutil.image import VicarImage
 
 
 class ImageWrapper(object):
-    __slots__ = 'image_data', 'bg', 'bg_degree', 'old', 'normalized', 'mse'
+    __slots__ = 'image_data', 'bg', 'bg_degree', 'old', 'normalized', 'mse', 'invalid_indices', 'border'
 
     image_data: VicarImage
     bg: Optional[np.ndarray]
@@ -13,6 +13,8 @@ class ImageWrapper(object):
     old: Optional[bool]
     normalized: Optional[bool]
     mse: Optional[float]
+    invalid_indices: Optional[np.ndarray]
+    border: int
 
     def __init__(self, image: VicarImage):
         super(ImageWrapper, self).__init__()
@@ -22,13 +24,24 @@ class ImageWrapper(object):
         self.normalized = None
         self.bg_degree = None
         self.mse = None
+        self.invalid_indices = None
+        self.border = 0
 
-    def add_bg(self, degree: int, bg: np.ndarray, old: bool, normalized: bool, mse: float):
+    def add_bg(
+            self,
+            degree: int,
+            bg: np.ndarray,
+            old: bool,
+            normalized: bool,
+            mse: float,
+            border: int
+    ):
         self.bg_degree = degree
         self.bg = bg
         self.old = old
         self.normalized = normalized
         self.mse = mse
+        self.border = border
 
     def get_raw(self):
         return self.image_data

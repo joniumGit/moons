@@ -71,7 +71,7 @@ CUBIC = "Show geometry in a cubic frame"
 
 def get_config():
     return {
-        TARGET_ESTIMATE: (bool, False),
+        TARGET_ESTIMATE: (bool, True),
         SUN_SATURN_VECTORS: (bool, True),
         TARGET_OVERRIDE: (str, None),
         INSTRUMENT_OVERRIDE: (str, None),

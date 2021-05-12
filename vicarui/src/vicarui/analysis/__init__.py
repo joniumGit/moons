@@ -1,8 +1,6 @@
 from types import ModuleType
 from typing import Optional, Dict, Tuple, Union, Callable, List
 
-from vicarutil.image import VicarImage
-
 from .fitting import DataPacket
 from .kernels import provide_kernels
 from .reduction import br_reduction
@@ -65,11 +63,10 @@ def get_config() -> Optional[Dict[str, Tuple[Union[str, float, int], Union[str, 
 
 
 def set_info(
-        image: VicarImage,
+        image: ImageWrapper,
         image_axis=None,
         analysis_axis=None,
         bg_axis=None,
-        border: int = 0,
         **config
 ) -> str:
     """
@@ -83,7 +80,6 @@ def set_info(
                 image_axis=image_axis,
                 analysis_axis=analysis_axis,
                 bg_axis=bg_axis,
-                border=border,
                 **config
             )
     except AttributeError:

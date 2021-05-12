@@ -13,7 +13,9 @@ class AppWindow(qt.QWidget):
         plw.setSizePolicy(qt.QSizePolicy.Expanding, qt.QSizePolicy.Expanding)
         flw.setSizePolicy(qt.QSizePolicy.MinimumExpanding, qt.QSizePolicy.Expanding)
 
+        from .helper import stack
         flw.show_image.connect(plw.open_image)
+        flw.show_multiple.connect(lambda f: plw.show_image(stack(flw, f)))
 
         from functools import partial
         plw.image_show_start.connect(partial(setattr, flw, 'busy', True))

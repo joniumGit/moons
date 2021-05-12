@@ -102,7 +102,7 @@ class FigureWrapper(FigureCanvasQTAgg):
         self.image_shown.emit()
         stop_progress()
 
-    def _show_image_1(self, image: ImageWrapper, border: int, **kwargs):
+    def _show_image_1(self, image: ImageWrapper, **kwargs):
         data = self.fig.add_subplot(3, 3, (2, 6))
         og = self.fig.add_subplot(331)
         bg = self.fig.add_subplot(334)
@@ -121,11 +121,10 @@ class FigureWrapper(FigureCanvasQTAgg):
         try:
             self.fig.suptitle(
                 set_info(
-                    image.get_raw(),
+                    image,
                     image_axis=data,
                     analysis_axis=line,
                     background=bg,
-                    border=border,
                     **kwargs
                 ),
                 fontsize='small',
@@ -147,7 +146,7 @@ class FigureWrapper(FigureCanvasQTAgg):
         self._holder.image = image
         self._holder.norm = norm
         self._holder.click = click_area
-        self._show_image_1(image, br_pack['border'] or 0, **kwargs)
+        self._show_image_1(image, **kwargs)
         self._task = BRTask(image, br_pack)
         self._task.done.connect(self._show_image_2)
         self._task.start()

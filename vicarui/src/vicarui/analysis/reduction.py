@@ -27,13 +27,16 @@ def polyfit(
     return mse
 
 
-def remove_invalid(img: np.ndarray):
+def remove_invalid(image: ImageWrapper) -> np.ndarray:
+    img = image.get_image().copy()
     indices = list()
     for _i, line in enumerate(img):
-        if np.isclose(np.average(line), line[0]):
+        if np.alltrue(np.isclose(line, np.average(line))):
             indices.append(_i)
     if len(indices) != 0:
+        image.invalid_indices = np.asarray(indices)
         return np.delete(img, indices, axis=0)
+    img[np.logical_not(np.isfinite(img))] = np.NINF
     return img
 
 
@@ -80,14 +83,11 @@ def br_reduction(
 
     img: np.ndarray
     if border > 0 and border * 2 + 20 < len(image.get_image()):
-        img = remove_invalid(image.get_image().copy()[border + 1:-1 * border, border + 1:-1 * border])
+        img = remove_invalid(image)[border + 1:-1 * border, border + 1:-1 * border]
     else:
-        img = remove_invalid(image.get_image().copy())
+        img = remove_invalid(image)
     minus: Optional[np.ndarray] = None
     gen_bg: bool = True
-
-    if normalize:
-        img = (img - np.min(img)) * 1 / (np.max(img) - np.min(img))
 
     mse = 0.0
     if image.get_bg() is not None:
@@ -99,6 +99,9 @@ def br_reduction(
                 and normalize == image.is_normalized()
         )
         mse = image.get_mse() or 0.0
+
+    if normalize:
+        img = (img - np.min(img)) * 1 / (np.max(img) - np.min(img))
 
     try:
         if reduce and gen_bg:
@@ -140,7 +143,7 @@ def br_reduction(
                 mse = np.median([mse, mean_squared_error(minus.ravel(), pred)])
                 minus = pred.reshape(img.shape)
 
-            image.add_bg(degree, minus, old, normalize, mse)
+            image.add_bg(degree, minus, old, normalize, mse, border)
             info(f"Background mse (Using old: {old}): {mse:.5e}")
 
         if reduce and minus is not None:
@@ -154,5 +157,8 @@ def br_reduction(
         handle_exception(e)
         mse = 0.0
         minus = np.zeros(img.shape)
+
+    if normalize:
+        img = (img - np.min(img)) * 1 / (np.max(img) - np.min(img))
 
     return img, minus, mse

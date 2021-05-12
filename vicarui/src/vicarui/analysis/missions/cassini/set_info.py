@@ -1,3 +1,5 @@
+from vicarui.analysis import ImageWrapper
+
 from .config import *
 from .funcs import img_sp_size, img_raw_size, img_rp_size, norm
 from .helpers import ImageHelper, Transformer
@@ -6,27 +8,26 @@ from ...tex import sci_2
 
 
 def set_info(
-        image: VicarImage,
+        image: ImageWrapper,
         image_axis=None,
         analysis_axis=None,
-        border: int = 0,
         **config
 ):
+    raw = image.get_raw()
     try:
-        load_kernels_for_image(image)
+        load_kernels_for_image(raw)
 
-        helper = ImageHelper(image, **config)
+        helper = ImageHelper(raw, **config)
         config = helper.config
 
         target, target_id = helper.target_full
         time = helper.time_et
         utc = helper.time_utc()
-        frame = helper.frame
 
         # https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/cspice/phaseq_c.html
         pa = spice.phaseq(time, target, SUN, CASSINI, ABCORR) * spice.dpr()
 
-        title = "FROM: %s - %s @ UTC %s \nPA=%.2f DEG" % (CASSINI, target, utc, pa)
+        title = "%s FROM: %s - %s @ UTC %s \nPA=%.2f DEG" % (helper.id, CASSINI, target, utc, pa)
 
         try:
             filters: List[str] = helper['INSTRUMENT']['FILTER_NAME']
@@ -71,8 +72,8 @@ def set_info(
                         i_name = 'Ring'
                         x_size, y_size = img_rp_size(helper)
 
-                    x_max = len(image.data[0][0])
-                    y_max = len(image.data[0])
+                    x_max = len(raw.data[0][0])
+                    y_max = len(raw.data[0])
 
                     second_x = ax.secondary_xaxis(
                         location=1.07,
@@ -117,45 +118,69 @@ def set_info(
                     log.exception("Something happened", exc_info=e)
 
                 if config[SUN_SATURN_VECTORS] or config[TARGET_ESTIMATE]:
-                    t = Transformer(J2K, frame, time)
-
+                    t = Transformer(J2K, helper.frame, time)
                     sun_pos = helper.pos(SUN_ID, helper.target_id())
-                    saturn_pos = helper.pos(SATURN_ID, helper.target_id())
-
-                    t_sun, t_saturn = t(sun_pos, saturn_pos)
-                    t_sun = -norm(t_sun)
-                    t_saturn = -norm(t_saturn)
+                    if helper.target_id() == SATURN_ID:
+                        it = -t
+                        t_cas = helper.pos_in_sat(CASSINI_ID, SATURN_ID)
+                        t_bore = it(helper.fbb[1])
+                        saturn_pos = -(t_cas + t_bore * -t_cas[2] / t_bore[2])
+                    else:
+                        saturn_pos = helper.pos(SATURN_ID, helper.target_id())
+                    t_sun, t_saturn = (-norm(v)[0:2] for v in t(sun_pos, saturn_pos))
 
                     if config[SUN_SATURN_VECTORS]:
-                        x = 200
-                        y = 200
+                        x = 70
+                        y = 70
 
-                        sun_coord = np.vstack([x, y]).ravel() + t_sun[:2] * 1000
-                        saturn_coord = np.vstack([x, y]).ravel() + t_saturn[:2] * 1000
+                        sun = np.column_stack(
+                            (
+                                [x, y],
+                                [
+                                    x + t_sun[0] * 60 / np.linalg.norm(t_sun),
+                                    y + t_sun[1] * 60 / np.linalg.norm(t_sun)
+                                ]
+                            )
+                        )
 
-                        ax.plot((x, sun_coord[0]), (y, sun_coord[1]), label="Sun", color="y")
-                        ax.plot((x, saturn_coord[0]), (y, saturn_coord[1]), label="Saturn", color="r")
+                        sat = np.column_stack(
+                            (
+                                [x, y],
+                                [
+                                    x + t_saturn[0] * 60 / np.linalg.norm(t_saturn),
+                                    y + t_saturn[1] * 60 / np.linalg.norm(t_saturn)
+                                ]
+                            )
+                        )
+
+                        ax.plot(*sun, label="Sun", color="y", linewidth=1)
+                        ax.plot(*sat, label="Saturn", color="r", linewidth=1)
 
                     if config[TARGET_ESTIMATE]:
-                        t_cassini = helper.pos_in_frame(target_id, CASSINI_ID)
+                        t_pos = helper.pos_in_frame(target_id, CASSINI_ID)
                         frame_name, bore, boundaries = helper.fbb
 
-                        x_len = len(image.data[0])
-                        y_len = len(image.data[0][0])
+                        x_len = len(raw.data[0])
+                        y_len = len(raw.data[0][0])
 
-                        if border != 0:
-                            x_len -= 2 * border
-                            y_len -= 2 * border
+                        x = x_len / 2.
+                        y = y_len / 2.
 
-                        x = -1 * np.arctan(t_cassini[0] / t_cassini[2]) * x_len / boundaries[0][0] + x_len / 2.
-                        y = -1 * np.arctan(t_cassini[1] / t_cassini[2]) * y_len / boundaries[0][1] + y_len / 2.
+                        b = boundaries[np.argmin([np.linalg.norm(b) for b in boundaries])]
+                        x += np.arctan(t_pos[0] / t_pos[2]) / np.arctan(b[0] / b[2]) * x_len / 2. * np.sign(t_pos[0])
+                        y += np.arctan(t_pos[1] / t_pos[2]) / np.arctan(b[1] / b[2]) * y_len / 2. * np.sign(t_pos[1])
+
+                        if image.invalid_indices is not None:
+                            for i in image.invalid_indices[::-1]:
+                                if i <= y:
+                                    y -= 1
+
+                        if image.border != 0:
+                            x -= image.border
+                            y -= image.border
 
                         log.debug(f"Estimate {x},{y}")
-
-                        ax.scatter(x, y, s=16, c="g")
-                        sun_coord = np.vstack([x, y]).ravel() + -t_sun[:2] * 1000
-                        ax.plot((x, sun_coord[0]), (y, sun_coord[1]), color="g")
-
+                        ax.scatter(x, y, s=16, c="g", alpha=0.65)
             except ImportError as e:
                 log.exception("No matplotlib", exc_info=e)
             except Exception as e:
@@ -163,7 +188,7 @@ def set_info(
 
         return title
     except Exception as e:
-        log.exception("Failed to load data: %s", image.name, exc_info=e)
+        log.exception("Failed to load data: %s", raw.name, exc_info=e)
         return "Failed to load data"
     finally:
         release_kernels()
