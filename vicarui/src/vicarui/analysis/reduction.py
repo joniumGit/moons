@@ -10,33 +10,6 @@ from .wrapper import ImageWrapper
 from ..support import info
 
 
-def halfToMask(
-        x: np.ndarray,
-        y: np.ndarray,
-        out: np.ndarray,
-        degree: int
-):
-    pipe = make_pipeline(
-        PolynomialFeatures(degree=degree),
-        LinearRegression()
-    )
-    mask: np.ndarray = np.logical_and(np.isfinite(y), np.isfinite(x))
-    if np.alltrue(mask):
-        pipe.fit(x[..., None], y)
-        ny = pipe.predict(x[..., None]) / 2
-        mse = mean_squared_error(y, ny)
-        np.add(ny, out, out=out)
-    else:
-        x = x[mask]
-        y = y[mask]
-        pipe.fit(x[..., None], y)
-        ny = pipe.predict(x[..., None]) / 2
-        mse = mean_squared_error(y, ny)
-        for i, v in zip(np.argwhere(mask), ny):
-            out[i] += v
-    return mse
-
-
 def remove_invalid(image: ImageWrapper) -> np.ndarray:
     img = image.get_image().copy()
     indices = list()
@@ -55,8 +28,7 @@ def br_reduction(
         reduce: bool = True,
         normalize: bool = True,
         degree: int = 3,
-        border: int = 2,
-        old: bool = True
+        border: int = 2
 ) -> Tuple[np.ndarray, np.ndarray, float]:
     """
     Polynomial background reduction and image normalization
@@ -82,9 +54,6 @@ def br_reduction(
     border:     int
                 Amount of pixels to exclude from all sides
 
-    old:        bool
-                Using outlier detection
-
     Returns
     -------
     data:       tuple
@@ -105,59 +74,29 @@ def br_reduction(
         gen_bg = not (
                 img.shape == minus.shape
                 and image.get_degree() == degree
-                and old == image.is_old()
                 and normalize == image.is_normalized()
         )
         mse = image.get_mse() or 0.0
 
     try:
         if reduce and gen_bg:
-            from collections import deque
-
-            minus = np.zeros(img.shape, dtype='float64')
-            mse = deque()
-
-            x = np.arange(0, len(img[0]))
-            for i, line in enumerate(img):
-                mse.append(halfToMask(x, line, minus[i], degree))
-
-            x = np.arange(0, len(img))
-            for i, line in enumerate(img.T):
-                mse.append(halfToMask(x, line, minus.T[i], degree))
-
-            mse = np.median(mse)
-
-            if old:
-                from sklearn.linear_model import RANSACRegressor
-                sac = RANSACRegressor(
-                    base_estimator=LinearRegression(n_jobs=-1),
-                    max_trials=1000,
-                    random_state=0,
-                    loss='squared_loss'
-                )
-                pipe = make_pipeline(
-                    PolynomialFeatures(degree=degree),
-                    sac
-                )
-                indexes = list()
-                for i in range(0, len(img)):
-                    for j in range(0, len(img[0])):
-                        indexes.append([i, j])
-                indexes = np.asarray(indexes)
-                pipe.fit(indexes, minus.ravel())
-                pred = pipe.predict(indexes)
-                mse = np.median([mse, mean_squared_error(minus.ravel(), pred)])
-                minus = pred.reshape(img.shape)
-
-            image.add_bg(degree, minus, old, normalize, mse, border)
-            info(f"Background mse (Using old: {old}): {mse:.5e}")
-
+            pipe = make_pipeline(PolynomialFeatures(degree=degree), LinearRegression(n_jobs=-1))
+            indexes = list()
+            for i in range(0, len(img)):
+                for j in range(0, len(img[0])):
+                    indexes.append([i, j])
+            indexes = np.asarray(indexes)
+            pipe.fit(indexes, img.ravel())
+            pred = pipe.predict(indexes)
+            mse = mean_squared_error(img.ravel(), pred)
+            minus = pred.reshape(img.shape)
+            image.add_bg(degree, minus, normalize, mse, border)
+            info(f"Background mse: {mse:.5e}")
         if reduce and minus is not None:
             img = img - minus
         else:
             minus = np.zeros(img.shape)
             mse = 0.0
-
     except Exception as e:
         from ..support import handle_exception
         handle_exception(e)

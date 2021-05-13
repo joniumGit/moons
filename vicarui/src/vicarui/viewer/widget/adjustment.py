@@ -26,10 +26,6 @@ class AdjustmentWidget(qt.QWidget):
         degree_label = qt.QLabel(text="Degree")
         degree = qt.QComboBox()
 
-        old_toggle = qt.QCheckBox(text="Outlier detection")
-        old_toggle.setChecked(True)
-        self.old_toggle = old_toggle
-
         for i in range(1, 6):
             degree.addItem(str(i))
 
@@ -59,7 +55,6 @@ class AdjustmentWidget(qt.QWidget):
         layout.addWidget(br_toggle, alignment=NW)
         layout.addWidget(degree, alignment=NW)
         layout.addWidget(degree_label, alignment=CL)
-        layout.addWidget(old_toggle, alignment=NW)
         layout.addSpacerItem(qt.QSpacerItem(10, 5, hData=qt.QSizePolicy.Minimum, vData=qt.QSizePolicy.Minimum))
         layout.addWidget(normal_toggle, alignment=NW)
         layout.addSpacerItem(qt.QSpacerItem(10, 5, hData=qt.QSizePolicy.Minimum, vData=qt.QSizePolicy.Minimum))
@@ -102,8 +97,7 @@ class AdjustmentWidget(qt.QWidget):
             'normalize': self.normal_toggle.isChecked(),
             'reduce': self.br_toggle.isChecked(),
             'degree': self.degree.currentIndex() + 1,
-            'border': int(self.border_value.text()) if self.border_value.text().strip() != '' else 0,
-            'old': self.old_toggle.isChecked()
+            'border': int(self.border_value.text()) if self.border_value.text().strip() != '' else 0
         }
 
     def get_image_normalize(self) -> Callable[[np.ndarray], Union[ImageNormalize, None]]:
