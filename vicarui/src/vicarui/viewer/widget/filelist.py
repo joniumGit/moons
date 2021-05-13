@@ -202,7 +202,7 @@ class FileListWidget(qt.QWidget):
             i = self.item_view.indexAt(event.pos())
             if i is not None:
                 item: QStandardItem = self.model.itemFromIndex(i)
-                if item.hasChildren():
+                if item is not None and item.hasChildren():
                     if self.item_view.isExpanded(i):
                         self.item_view.collapse(i)
                     else:

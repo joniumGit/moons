@@ -8,6 +8,8 @@ import spiceypy as spice
 from vicarutil.image import VicarImage
 
 from ...internal import log
+# noinspection PyUnresolvedReferences
+from ...wrapper import ImageWrapper
 
 log.debug('Initializing SPICE: %s' + spice.tkvrsn('TOOLKIT'))
 

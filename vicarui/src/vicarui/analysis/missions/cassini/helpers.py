@@ -138,6 +138,10 @@ class ImageHelper:
         return frame, bore, bounds
 
     @cached_property
+    def target_radii(self) -> float:
+        return np.average(spice.bodvcd(self.target_id(), 'RADII', 3)[1])
+
+    @cached_property
     def shadow_angles(self):
         """
         Shadow angle offset and shadow angle in image

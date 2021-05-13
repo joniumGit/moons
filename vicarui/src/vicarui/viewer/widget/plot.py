@@ -84,7 +84,7 @@ class PlotWidget(QWidget):
     def additional_callable(self):
         if self.image is not None:
             return {
-                'image': self.image.get_raw(),
+                'image': self.image,
                 **self.get_config()
             }
         else:

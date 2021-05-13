@@ -106,7 +106,11 @@ class DataPacket(object):
     def scatter(self, ax: Axes, **kwargs):
         ax.scatter(self.x_data, self.y_data, **kwargs)
 
-    def fit(self, x_start: int, x_end: int, in_kwargs: Dict, out_kwargs: Dict) -> Dict:
+    def fit(self, x_start: float, x_end: float, in_kwargs=None, out_kwargs=None) -> Dict:
+        if out_kwargs is None:
+            out_kwargs = dict()
+        if in_kwargs is None:
+            in_kwargs = dict()
         x_in = deque()
         y_in = deque()
 
@@ -137,13 +141,12 @@ class DataPacket(object):
         pred_y_out = pipe.predict(nx_out[..., None])
         bg_title = reg_to_title(bg_reg.estimator_, 'BG:')
 
-        m, n, p = bg_reg.estimator_.coef_[2], bg_reg.estimator_.coef_[1], bg_reg.estimator_.intercept_
-
         # FG
         fg_reg = LinearRegression(n_jobs=-1)
         pipe = make_pipeline(PolynomialFeatures(self.degree), fg_reg)
         pipe.fit(x_in, y_in)
 
+        m, n, p = bg_reg.estimator_.coef_[2], bg_reg.estimator_.coef_[1], bg_reg.estimator_.intercept_
         a, b, c = fg_reg.coef_[2], fg_reg.coef_[1], fg_reg.intercept_
         add, roots = additional_info(a, b, c, m, n, p)
 
@@ -168,11 +171,13 @@ class DataPacket(object):
                 'out': (x_out[np.logical_not(bg_reg.inlier_mask_)], y_out[np.logical_not(bg_reg.inlier_mask_)]),
                 'title': bg_title,
                 'line': Line2D(nx_out, pred_y_out, **out_kwargs),
-                'mse': bg_mse
+                'mse': bg_mse,
+                'equation': [m, n, p]
             },
             'FIT': {
                 'title': fg_title,
                 'line': Line2D(nx_in, pred_y_in, **in_kwargs),
-                'mse': fg_mse
+                'mse': fg_mse,
+                'equation': [a, b, c]
             }
         }

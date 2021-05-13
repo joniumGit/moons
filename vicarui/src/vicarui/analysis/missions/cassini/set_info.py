@@ -165,8 +165,8 @@ def set_info(
                         x_len = len(raw.data[0])
                         y_len = len(raw.data[0][0])
 
-                        x = x_len / 2.
-                        y = y_len / 2.
+                        x = 0
+                        y = 0
 
                         b = boundaries[np.argmin([np.linalg.norm(b) for b in boundaries])]
                         x += np.arctan(t_pos[0] / t_pos[2]) / np.arctan(b[0] / b[2]) * x_len / 2. * np.sign(t_pos[0])
@@ -178,8 +178,13 @@ def set_info(
                                     y -= 1
 
                         if image.border != 0:
-                            x -= image.border
-                            y -= image.border
+                            log.debug(f"Border detected: {image.border}")
+                            x += (x_len - 2 * image.border) / 2.
+                            y += (y_len - 2 * image.border) / 2.
+                        else:
+                            x += x_len / 2.
+                            y += y_len / 2.
+
 
                         log.debug(f"Estimate {x},{y}")
                         ax.scatter(x, y, s=16, c="g", alpha=0.65)

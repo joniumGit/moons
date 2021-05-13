@@ -1,56 +1,14 @@
 from .config import *
-from .funcs import rs
 from .helpers import ImageHelper
 from ...kernels import load_kernels_for_image, release_kernels
 
 
-def plot_sphere(c: Tuple[int, int, int], r: float, ax, color: str):
-    """
-    Cool sphere plotter
-    """
-    from mpl_toolkits.mplot3d import Axes3D
-    from typing import cast
-    from matplotlib.colors import to_rgba
-
-    ax = cast(Axes3D, ax)
-    g_1, g_2 = np.mgrid[0:2 * spice.pi():50j, 0:spice.pi():25j]
-    x = np.cos(g_1) * np.sin(g_2) * r + c[0]
-    y = np.sin(g_1) * np.sin(g_2) * r + c[1]
-    z = np.cos(g_2) * r + c[2]
-
-    ax.plot_wireframe(
-        x,
-        y,
-        z,
-        alpha=WF_ALPHA,
-        linewidth=0.5,
-        colors=to_rgba(color, WF_ALPHA),
-        zorder=1000
-    )
-
-
-def plot_rings(rings: Iterable[float], ax):
-    # Plotting wireframes is difficult
-    xx, yy = np.mgrid[0:2 * spice.pi():100j, 0:0:100j]
-    for r in rings:
-        from matplotlib.colors import to_rgba
-        color = SATURN_COLOR
-        ax.plot_wireframe(
-            np.sin(xx) * r / rs(),
-            np.cos(xx) * r / rs(),
-            yy,
-            alpha=WF_ALPHA,
-            linewidth=0.5,
-            colors=to_rgba(color, WF_ALPHA),
-            zorder=1000
-        )
-
-
-def view_geometry(*_, image: VicarImage = None, **config):
+def view_geometry(*_, image: ImageWrapper = None, **config):
     """
     Geometry viewer
     """
     if image is not None:
+        image: VicarImage = image.get_raw()
         from PySide2.QtWidgets import QDialog, QHBoxLayout, QVBoxLayout, QSizePolicy, QTextEdit
         from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT
         from matplotlib.pyplot import Figure

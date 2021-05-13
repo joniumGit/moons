@@ -78,6 +78,8 @@ def br_reduction(
         )
         mse = image.get_mse() or 0.0
 
+    image.border = border
+
     try:
         if reduce and gen_bg:
             pipe = make_pipeline(PolynomialFeatures(degree=degree), LinearRegression(n_jobs=-1))
@@ -90,7 +92,7 @@ def br_reduction(
             pred = pipe.predict(indexes)
             mse = mean_squared_error(img.ravel(), pred)
             minus = pred.reshape(img.shape)
-            image.add_bg(degree, minus, normalize, mse, border)
+            image.add_bg(degree, minus, mse)
             info(f"Background mse: {mse:.5e}")
         if reduce and minus is not None:
             img = img - minus
@@ -105,5 +107,13 @@ def br_reduction(
 
     if normalize:
         img = (img - np.min(img)) * 1 / (np.max(img) - np.min(img))
+        image.normalized = True
+    else:
+        image.normalized = False
+
+    if reduce:
+        image.active = True
+    else:
+        image.active = False
 
     return img, minus, mse
