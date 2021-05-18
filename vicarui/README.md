@@ -7,6 +7,8 @@ analyze shadows in the Cassini probe images, but could be used for anything else
 
 ## usage
 
+![](/.github/images/sample.png)
+
 The viewer is very simple to use, load images and start analyzing. During image loading the program tries to find
 the ``IDENTIFICATION`` property label from the image in order to group them by the sequence id, but it should work with
 it absent too.
@@ -24,13 +26,15 @@ The UI should be quite self-explanatory for the features which include:
 
 ### Background reduction
 
-Background reduction is done with __LinearRegression__ models from __Scikit-learn__, and a background smoothing step is
-optionally included with __RANSACRegressor__. The fitted polynomial degree is user configurable from the ui, and it is
-implemented in the learning models with __PolynomialFeatures__. [Robust fitting by Scikit](
+Background reduction is done with __LinearRegression__ models from __Scikit-learn__. The fitted polynomial degree is
+user configurable from the ui, and it is implemented in the learning models with __PolynomialFeatures__. It would be
+possible to use models explained in [Robust fitting by Scikit](
 https://scikit-learn.org/stable/auto_examples/linear_model/plot_robust_fit.html
-).
+), but they did not significantly improve the outcome.
 
 ### Inspection
+
+![](/.github/images/fit.png)
 
 The area inspection view is an average of the first dimension selected in the viewers upper corner
 ``width``, the ``window`` controls selection width.

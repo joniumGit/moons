@@ -26,6 +26,20 @@ Parses [VICAR2](https://www-mipl.jpl.nasa.gov/external/VICAR_file_fmt.pdf) file 
 
 [VicarUtil](vicarutil) - reading images
 
-Easiest to install with ``pip install -e vicarutil`` and ``pip install -e vicarui`` in a Python virtual environment. 
+Easiest to install with ``pip install -e vicarutil`` and ``pip install -e vicarui`` in a Python virtual environment.
 
-[PyCharm](https://www.jetbrains.com/pycharm/) is highly recommended if you want need to make any changes. 
+[PyCharm](https://www.jetbrains.com/pycharm/) is highly recommended if you want need to make any changes.
+
+## Some features:
+
+#### Geometry viewer
+
+![](.github/images/geom.png)
+
+#### Inspection
+
+![](.github/images/fit.png)
+
+#### Autofit (in development)
+
+![](.github/images/autofit.png)
