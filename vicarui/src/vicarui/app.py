@@ -88,6 +88,8 @@ def run(no_init: bool = False):
     info("Starting application")
     app = qt.QApplication(sys.argv)
     apw = AppWindow()
+    from PySide2.QtCore import Qt
+    apw.setWindowState(Qt.WindowMaximized)
     apw.setWindowTitle('VicarUI')
     info("Setup done, starting...")
     apw.show()

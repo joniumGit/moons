@@ -19,22 +19,71 @@ def reg_to_title(regressor, prefix: str) -> str:
     return fr"{prefix} ${a}{b}{c}$"
 
 
-def additional_info(a: float, b: float, c: float, m: float, n: float, p: float) -> Tuple[str, np.ndarray]:
+def reg_to_eq(regressor) -> np.ndarray:
+    return np.asarray([*regressor.coef_[1:][::-1], regressor.intercept_])
+
+
+def roots_2nd_deg(eq1: np.ndarray, eq2: np.ndarray):
+    """
+    Equation coefficients from largest to smallest
+
+    Returns roots from largest to smallest
+    """
+    return -np.sort(-np.roots(eq1 - eq2))
+
+
+def contrast_2nd_deg(eq1: np.ndarray, eq2: np.ndarray) -> Tuple[float, float]:
+    """
+    Equation coefficients from largest to smallest
+
+    Returns distance if all roots real
+    """
+    equation = eq1 - eq2
+    roots: np.ndarray = np.roots(equation)
+    try:
+        if np.alltrue(np.isreal(roots)):
+            x_val = -0.5 * equation[1] / equation[0]
+            d = equation[0] * np.power(x_val, 2) + equation[1] * x_val + equation[2]
+            return x_val, d
+    except Exception as e:
+        from .internal import log
+        log.exception("Exception in contrast", exc_info=e)
+    return np.NAN, np.NAN
+
+
+def integrate_2nd_deg(eq1: np.ndarray, eq2: np.ndarray) -> float:
+    """
+    Equation coefficients from largest to smallest
+
+    Returns Area between curves
+    """
+    equation = eq1 - eq2
+    roots: np.ndarray = np.roots(equation)
+    if np.alltrue(np.isreal(roots)):
+        try:
+            vals = [
+                np.reciprocal(float(i))
+                * j
+                * (np.power(np.max(roots), i) - np.power(np.min(roots), i))
+                for i, j in enumerate(equation[::-1], start=1)
+            ]
+            return np.sum(vals)
+        except Exception as e:
+            from .internal import log
+            log.exception("Exception in integral", exc_info=e)
+    return np.NAN
+
+
+def additional_2nd_deg_info(bg_reg, fg_reg) -> Tuple[str, np.ndarray]:
     from .tex import sci_4
+    eq1 = reg_to_eq(bg_reg)
+    eq2 = reg_to_eq(fg_reg)
+    roots = roots_2nd_deg(eq1, eq2)
     out = "  "
-    x_val = -0.5 * (n - b) / (m - a)
-    d = (m - a) * np.power(x_val, 2) + (n - b) * x_val + p - c
-    out += r"    $\Delta_{max}=" f" {sci_4(d)}, x={x_val:3.2f}$"
-    eq = [m - a, n - b, p - c]
-    roots = np.roots(eq)
-    if len(roots) == 2 and np.alltrue(np.isreal(roots)):
-        integral = 1 / 3 * (m - a) * (
-                np.power(roots[0], 3) - np.power(roots[1], 3)
-        ) + 1 / 2 * (n - b) * (
-                           np.power(roots[0], 2) - np.power(roots[1], 2)
-                   ) + (p - c) * (
-                           roots[0] - roots[1]
-                   )
+    if np.alltrue(np.isreal(roots)):
+        x_val, d = contrast_2nd_deg(eq1, eq2)
+        integral = integrate_2nd_deg(eq1, eq2)
+        out += r"    $\Delta_{max}=" f" {sci_4(d)}, x={x_val:3.2f}$"
         out += fr"  $\int\Delta={sci_4(integral)}, x_0={roots[1]:3.2f}, x_1={roots[0]:3.2f}$"
     return out, roots
 
@@ -146,13 +195,14 @@ class DataPacket(object):
         pipe = make_pipeline(PolynomialFeatures(self.degree), fg_reg)
         pipe.fit(x_in, y_in)
 
-        m, n, p = bg_reg.estimator_.coef_[2], bg_reg.estimator_.coef_[1], bg_reg.estimator_.intercept_
-        a, b, c = fg_reg.coef_[2], fg_reg.coef_[1], fg_reg.intercept_
-        add, roots = additional_info(a, b, c, m, n, p)
-
-        if len(roots) == 2 and np.alltrue(np.isreal(roots)):
-            nx_in = np.linspace(roots[1], roots[0])
+        if self.degree == 2:
+            add, roots = additional_2nd_deg_info(bg_reg.estimator_, fg_reg)
+            if len(roots) == 2 and np.alltrue(np.isreal(roots)):
+                nx_in = np.linspace(roots[1], roots[0])
+            else:
+                nx_in = np.arange(x_in[0], x_in[-1], 0.25)
         else:
+            add = ''
             nx_in = np.arange(x_in[0], x_in[-1], 0.25)
 
         pred_y_in = pipe.predict(nx_in[..., None])
@@ -160,11 +210,7 @@ class DataPacket(object):
 
         from .tex import sci_4
         fg_mse = f'${sci_4(mean_squared_error(y_in, pipe.predict(x_in)))}$'
-
-        bg_mse = (
-                f'${sci_4(mean_squared_error(y_out, pipe.predict(x_out)))}$'
-                + add
-        )
+        bg_mse = f'${sci_4(mean_squared_error(y_out, pipe.predict(x_out)))}$' + add
 
         return {
             'BG': {
@@ -172,12 +218,12 @@ class DataPacket(object):
                 'title': bg_title,
                 'line': Line2D(nx_out, pred_y_out, **out_kwargs),
                 'mse': bg_mse,
-                'equation': [m, n, p]
+                'equation': reg_to_eq(bg_reg.estimator_)
             },
             'FIT': {
                 'title': fg_title,
                 'line': Line2D(nx_in, pred_y_in, **in_kwargs),
                 'mse': fg_mse,
-                'equation': [a, b, c]
+                'equation': reg_to_eq(fg_reg)
             }
         }

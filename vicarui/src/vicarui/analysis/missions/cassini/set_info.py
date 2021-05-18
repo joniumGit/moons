@@ -1,7 +1,5 @@
-from vicarui.analysis import ImageWrapper
-
 from .config import *
-from .funcs import img_sp_size, img_raw_size, img_rp_size, norm
+from .funcs import norm
 from .helpers import ImageHelper, Transformer
 from ...kernels import load_kernels_for_image, release_kernels
 from ...tex import sci_2
@@ -61,57 +59,26 @@ def set_info(
                 ax: Axes = image_axis
 
                 try:
-                    x_size: float
-                    y_size: float
-                    i_name: str
-                    if helper.config[SIZE_FRAME] == 1:
-                        i_name = 'Shadow'
-                        x_size, y_size = img_sp_size(helper)
-                    elif helper.config[SIZE_FRAME] == 2:
-                        i_name = 'Target'
-                        x_size, y_size = img_raw_size(helper)
-                    else:
-                        i_name = 'Ring'
-                        x_size, y_size = img_rp_size(helper)
-
-                    x_max = len(raw.data[0][0])
-                    y_max = len(raw.data[0])
-
-                    second_x = ax.secondary_xaxis(
-                        location=1.07,
-                        functions=(
-                            lambda a: x_size / x_max * a,
-                            lambda a: x_max / x_size * a
-                        )
-                    )
-                    second_y = ax.secondary_yaxis(
-                        location=1.07,
-                        functions=(
-                            lambda a: y_size / y_max * a,
-                            lambda a: y_max / y_size * a
-                        )
-                    )
-
                     from matplotlib.ticker import AutoMinorLocator
+                    from ....support.mpl import MPL_FONT_CONFIG
+
+                    second_x = ax.secondary_xaxis(location=1.07, functions=helper.size_x_transforms)
+                    second_y = ax.secondary_yaxis(location=1.07, functions=helper.size_y_transforms)
+
                     second_y.yaxis.set_minor_locator(AutoMinorLocator())
                     second_x.xaxis.set_minor_locator(AutoMinorLocator())
 
-                    from ....support.mpl import MPL_FONT_CONFIG
                     second_y.set_ylabel(
-                        f"At {i_name} intercept $(px = {sci_2(x_size / x_max)}, {sci_2(y_size / y_max)})$ KM",
+                        f"At {helper.size_name} intercept "
+                        f"$(px = {sci_2(helper.size_per_px[0])},"
+                        f" {sci_2(helper.size_per_px[1])})$ KM",
                         **MPL_FONT_CONFIG
                     )
 
                     def mod_ax(axes: Axes, vertical: bool = False, **_):
                         ax2 = axes.secondary_xaxis(
                             location=-0.22,
-                            functions=(
-                                lambda a: y_size / y_max * a,
-                                lambda a: y_max / y_size * a
-                            ) if vertical else (
-                                lambda a: x_size / x_max * a,
-                                lambda a: x_max / x_size * a
-                            )
+                            functions=helper.size_y_transforms if vertical else helper.size_x_transforms
                         )
                         ax2.xaxis.set_minor_locator(AutoMinorLocator())
 
@@ -184,7 +151,6 @@ def set_info(
                         else:
                             x += x_len / 2.
                             y += y_len / 2.
-
 
                         log.debug(f"Estimate {x},{y}")
                         ax.scatter(x, y, s=16, c="g", alpha=0.65)

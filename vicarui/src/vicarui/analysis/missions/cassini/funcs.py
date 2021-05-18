@@ -4,7 +4,10 @@ from .config import *
 from .helpers import *
 
 
-def max_mag(bore: np.ndarray, corners: np.ndarray):
+def max_mag(bore: np.ndarray, corners: np.ndarray) -> Tuple[float, float]:
+    """
+    Width, Height
+    """
     from itertools import combinations
     max_sep = np.sort(np.asarray([np.linalg.norm(a - b) for a, b in combinations(corners, 2)]))
 
@@ -36,6 +39,8 @@ def norm(v: np.ndarray) -> np.ndarray:
 def img_rp_size(helper: ImageHelper) -> Tuple[float, float]:
     """
     Size of image in x, y in kilometers in the Saturn ring plane
+
+    Returns Width, Height in km
     """
     cas = spice.spkezp(CASSINI_ID, helper.time_et, SATURN_FRAME, ABCORR, SATURN_ID)[0]
     frame, bore, bounds = helper.fbb
@@ -50,9 +55,11 @@ def img_rp_size(helper: ImageHelper) -> Tuple[float, float]:
     return max_mag(t(bore), np.asarray(corners))
 
 
-def img_sp_size(helper: ImageHelper):
+def img_sp_size(helper: ImageHelper) -> Tuple[float, float]:
     """
     Size in 'Shadow plane'
+
+    Returns Width, Height in km
     """
     frame, bore, bounds = helper.fbb
     t = Transformer(frame, SATURN_FRAME, helper.time_et)
@@ -62,9 +69,11 @@ def img_sp_size(helper: ImageHelper):
     return max_mag(t(bore), np.asarray(corners))
 
 
-def img_raw_size(helper: ImageHelper):
+def img_raw_size(helper: ImageHelper) -> Tuple[float, float]:
     """
     Raw image size
+
+    Returns Width, Height in km
     """
     frame, bore, bounds = helper.fbb
     t = Transformer(frame, SATURN_FRAME, helper.time_et)
@@ -91,19 +100,26 @@ def get_camera_intersects(helper: ImageHelper):
     Where should our camera be? in RS
     """
     cassini_pos = helper.pos_in_sat(CASSINI_ID, SATURN_ID)
-
     # Calculating intercepts
     frm, bore, bounds = helper.fbb
     t = Transformer(frm, SATURN_FRAME, helper.time_et)
     bore = t(bore)
     bore_intercept: np.ndarray
     bound_intersects: Union[List[np.ndarray], np.ndarray] = list()
-    if helper.config[SIZE_FRAME] == 1:
+    if helper.size_selection == SIZE_AT_SHADOW:
         # Shadow
         spi = ShadowPlaneIntersect(helper)
         bore_intercept = spi(bore)
         bound_intersects = [np.column_stack((cassini_pos, spi(t(b)))) for b in bounds]
-    elif helper.config[SIZE_FRAME] == 2:
+    elif helper.size_selection == SIZE_AT_RING:
+        # Ring plane
+        bore_intercept = bore * (-cassini_pos[2] / bore[2])
+        for b in bounds:
+            tb = t(norm(b))
+            pv = cassini_pos + tb * (-cassini_pos[2] / tb[2])
+            bound_intersects.append(np.column_stack((cassini_pos, pv)))
+        bore_intercept = cassini_pos + bore_intercept
+    else:
         # Raw
         bore_len = np.linalg.norm(bore)
         target_dist = np.linalg.norm(helper.pos_in_sat(CASSINI_ID, helper.target_id()))
@@ -113,14 +129,6 @@ def get_camera_intersects(helper: ImageHelper):
             tb = t(norm(b))
             nll = np.dot(tb, bore) / bore_len
             bound_intersects.append(np.column_stack((cassini_pos, cassini_pos + tb * target_dist / nll)))
-    else:
-        # Ring plane
-        bore_intercept = bore * (-cassini_pos[2] / bore[2])
-        for b in bounds:
-            tb = t(norm(b))
-            pv = cassini_pos + tb * (-cassini_pos[2] / tb[2])
-            bound_intersects.append(np.column_stack((cassini_pos, pv)))
-        bore_intercept = cassini_pos + bore_intercept
     bound_intersects = np.asarray([scale_to_rs(bi) for bi in bound_intersects])
     return scale_to_rs(bore_intercept), bound_intersects
 

@@ -1,4 +1,5 @@
 from functools import cached_property
+from typing import Callable
 
 import spiceypy
 
@@ -96,7 +97,7 @@ class ImageHelper:
         """
         frame: str
         ovr = self.config[INSTRUMENT_OVERRIDE]
-        if ovr is not None:
+        if ovr is not None and ovr != "":
             frame = spice.frmnam(spice.bods2c(ovr))
         else:
             frame = l2i(self.identification()['INSTRUMENT_ID'])
@@ -171,6 +172,77 @@ class ImageHelper:
                 / np.linalg.norm(pos_raw)
             ) * spiceypy.dpr(),
             7
+        )
+
+    @property
+    def y_max(self) -> int:
+        return len(self.image.data[0])
+
+    @property
+    def x_max(self) -> int:
+        return len(self.image.data[0][0])
+
+    @cached_property
+    def size_at_shadow(self) -> Tuple[float, float]:
+        from .funcs import img_sp_size
+        return img_sp_size(self)
+
+    @cached_property
+    def size_at_ring(self) -> Tuple[float, float]:
+        from .funcs import img_rp_size
+        return img_rp_size(self)
+
+    @cached_property
+    def size_at_target(self) -> Tuple[float, float]:
+        from .funcs import img_raw_size
+        return img_raw_size(self)
+
+    def per_px(self, km_size: Tuple[float, float]):
+        return np.divide(km_size[0], self.x_max), np.divide(km_size[1], self.y_max)
+
+    @property
+    def size(self) -> Tuple[float, float]:
+        sf = self.config[SIZE_FRAME]
+        if sf == SIZE_AT_RING:
+            return self.size_at_ring
+        elif sf == SIZE_AT_SHADOW:
+            return self.size_at_shadow
+        else:
+            return self.size_at_target
+
+    @property
+    def size_name(self) -> str:
+        sf = self.config[SIZE_FRAME]
+        if sf == SIZE_AT_RING:
+            return "Ring"
+        elif sf == SIZE_AT_SHADOW:
+            return "Shadow"
+        else:
+            return "Target"
+
+    @property
+    def size_selection(self) -> int:
+        try:
+            return self.config[SIZE_FRAME]
+        except KeyError:
+            return 0
+
+    @property
+    def size_per_px(self):
+        return self.per_px(self.size)
+
+    @property
+    def size_x_transforms(self) -> Tuple[Callable, Callable]:
+        return (
+            lambda x: self.size_per_px[0] * x,
+            lambda x: np.reciprocal(self.size_per_px[0]) * x
+        )
+
+    @property
+    def size_y_transforms(self) -> Tuple[Callable, Callable]:
+        return (
+            lambda y: self.size_per_px[1] * y,
+            lambda y: np.reciprocal(self.size_per_px[1]) * y
         )
 
 

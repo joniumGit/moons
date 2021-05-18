@@ -7,10 +7,11 @@ import spiceypy as spice
 # noinspection PyUnresolvedReferences
 from vicarutil.image import VicarImage
 
-from ...internal import log
+from ...internal import log as parent_logger
 # noinspection PyUnresolvedReferences
 from ...wrapper import ImageWrapper
 
+log = parent_logger.getChild("cassini")
 log.debug('Initializing SPICE: %s' + spice.tkvrsn('TOOLKIT'))
 
 # https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/naif_ids.html
@@ -51,9 +52,9 @@ def l2i(label: str) -> str:
     """
     Known cassini camera from image labels to actual frame name
     """
-    if label == LABEL_WAC:
+    if label.strip() == LABEL_WAC:
         return FRAME_WAC
-    elif label == LABEL_NAC:
+    elif label.strip() == LABEL_NAC:
         return FRAME_NAC
     else:
         return label
@@ -67,8 +68,12 @@ TARGET_ESTIMATE = "Draw Target Estimate"
 SUN_SATURN_VECTORS = "Draw Sun Saturn Vectors"
 TARGET_OVERRIDE = "Target Override"
 INSTRUMENT_OVERRIDE = "Instrument Override"
-SIZE_FRAME = "Size at plane (0: ring, 1: shadow, 2: raw)"
+SIZE_FRAME = "Size at (0: target, 1: shadow, 2: ring)"
 CUBIC = "Show geometry in a cubic frame"
+
+SIZE_AT_TARGET = 0
+SIZE_AT_SHADOW = 1
+SIZE_AT_RING = 2
 
 
 def get_config():
@@ -77,6 +82,6 @@ def get_config():
         SUN_SATURN_VECTORS: (bool, True),
         TARGET_OVERRIDE: (str, None),
         INSTRUMENT_OVERRIDE: (str, None),
-        SIZE_FRAME: (int, 2),
+        SIZE_FRAME: (int, 0),
         CUBIC: (bool, True)
     }

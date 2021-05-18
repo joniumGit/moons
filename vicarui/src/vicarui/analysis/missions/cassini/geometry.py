@@ -10,12 +10,14 @@ def view_geometry(*_, image: ImageWrapper = None, **config):
     if image is not None:
         image: VicarImage = image.get_raw()
         from PySide2.QtWidgets import QDialog, QHBoxLayout, QVBoxLayout, QSizePolicy, QTextEdit
+        from PySide2.QtCore import Qt
         from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT
         from matplotlib.pyplot import Figure
         from mpl_toolkits.mplot3d import Axes3D
         from .entity import PlotPacket
 
         d = QDialog()
+        d.setWindowState(Qt.WindowMaximized)
         d.setWindowTitle("Image Geometry")
         layout = QHBoxLayout()
 
