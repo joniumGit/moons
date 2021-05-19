@@ -82,7 +82,7 @@ def br_reduction(
 
     try:
         if reduce and gen_bg:
-            pipe = make_pipeline(PolynomialFeatures(degree=degree), LinearRegression(n_jobs=-1))
+            pipe = make_pipeline(PolynomialFeatures(degree=degree, include_bias=False), LinearRegression(n_jobs=-1))
             indexes = list()
             for i in range(0, len(img)):
                 for j in range(0, len(img[0])):

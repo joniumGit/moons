@@ -134,9 +134,9 @@ def show(
         func_bwd: Optional[Callable[[float], float]] = None
 ) -> NoReturn:
     from matplotlib.pyplot import Axes
-    from sklearn.preprocessing import FunctionTransformer, PolynomialFeatures
+    from sklearn.preprocessing import FunctionTransformer
     from sklearn.pipeline import make_pipeline, Pipeline
-    from sklearn.linear_model import HuberRegressor, LinearRegression
+    from sklearn.linear_model import HuberRegressor
     from sklearn.metrics import mean_squared_error
     from typing import cast
 
@@ -150,39 +150,14 @@ def show(
     plots = cast(Dict[str, Axes], plots)
     pipes = [
         Pipe(
-            color="red",
-            style="--",
-            line=make_pipeline(PolynomialFeatures(2), LinearRegression(n_jobs=-1))
-        ),
-        Pipe(
-            color="red",
-            style="-",
-            line=make_pipeline(PolynomialFeatures(2), HuberRegressor())
-        ),
-        Pipe(
-            color="yellow",
-            style="--",
-            line=make_pipeline(FunctionTransformer(np.reciprocal), LinearRegression(n_jobs=-1))
-        ),
-        Pipe(
             color="yellow",
             style="-",
             line=make_pipeline(FunctionTransformer(np.reciprocal), HuberRegressor())
         ),
         Pipe(
             color="magenta",
-            style="--",
-            line=make_pipeline(FunctionTransformer(np.log1p, np.expm1), LinearRegression(n_jobs=-1))
-        ),
-        Pipe(
-            color="magenta",
             style="-",
             line=make_pipeline(FunctionTransformer(np.log1p, np.expm1), HuberRegressor())
-        ),
-        Pipe(
-            color="cyan",
-            style="--",
-            line=make_pipeline(FunctionTransformer(func_fwd, func_bwd), LinearRegression(n_jobs=-1))
         ),
         Pipe(
             color="cyan",

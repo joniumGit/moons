@@ -20,7 +20,7 @@ def reg_to_title(regressor, prefix: str) -> str:
 
 
 def reg_to_eq(regressor) -> np.ndarray:
-    return np.asarray([*regressor.coef_[1:][::-1], regressor.intercept_])
+    return np.asarray([*regressor.coef_[::-1], regressor.intercept_])
 
 
 def roots_2nd_deg(eq1: np.ndarray, eq2: np.ndarray):
@@ -185,14 +185,14 @@ class DataPacket(object):
 
         # BG
         bg_reg = RANSACRegressor(random_state=0, max_trials=1000, base_estimator=LinearRegression())
-        pipe = make_pipeline(PolynomialFeatures(self.degree), bg_reg)
+        pipe = make_pipeline(PolynomialFeatures(self.degree, include_bias=False), bg_reg)
         pipe.fit(x_out, y_out)
         pred_y_out = pipe.predict(nx_out[..., None])
         bg_title = reg_to_title(bg_reg.estimator_, 'BG:')
 
         # FG
         fg_reg = LinearRegression(n_jobs=-1)
-        pipe = make_pipeline(PolynomialFeatures(self.degree), fg_reg)
+        pipe = make_pipeline(PolynomialFeatures(self.degree, include_bias=False), fg_reg)
         pipe.fit(x_in, y_in)
 
         if self.degree == 2:
