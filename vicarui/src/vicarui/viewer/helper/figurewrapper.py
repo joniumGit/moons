@@ -84,14 +84,8 @@ class FigureWrapper(FigureCanvasQTAgg):
         )
         data.minorticks_on()
 
-        # for x in self.fig.axes:
-        #     if x != line:
-        #         x.invert_yaxis()
-
         if normalizer:
             reduced = normalizer(reduced)
-        else:
-            data.set_title("No Post-Processing")
 
         self.event_handler = VicarEvent(reduced, data, line, self._holder.click)
         self.figure.set_tight_layout('true')
@@ -113,7 +107,7 @@ class FigureWrapper(FigureCanvasQTAgg):
         self._holder.background = bg
         self._holder.line = line
 
-        data.set_title("Post-Processed")
+        data.set_title("image")
         og.set_title("original")
         bg.set_title("background")
         line.set_title("line")
