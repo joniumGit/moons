@@ -8,19 +8,17 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import PolynomialFeatures
 
 
-def reg_to_title(regressor, prefix: str) -> str:
-    from .tex import sci_4
-    a = regressor.coef_[2]
-    a = sci_4(a, plus_sign=True) + r"\cdot x^2"
-    b = regressor.coef_[1]
-    b = sci_4(b, plus_sign=True) + r"\cdot x"
-    c = regressor.intercept_
-    c = sci_4(c, plus_sign=True)
-    return fr"{prefix} ${a}{b}{c}$"
-
-
 def reg_to_eq(regressor) -> np.ndarray:
     return np.asarray([*regressor.coef_[::-1], regressor.intercept_])
+
+
+def reg_to_title(regressor, prefix: str) -> str:
+    from .tex import sci_4
+    a, b, c = reg_to_eq(regressor)
+    a = sci_4(a, plus_sign=True) + r"\cdot x^2"
+    b = sci_4(b, plus_sign=True) + r"\cdot x"
+    c = sci_4(c, plus_sign=True)
+    return fr"{prefix} ${a}{b}{c}$"
 
 
 def roots_2nd_deg(eq1: np.ndarray, eq2: np.ndarray):
