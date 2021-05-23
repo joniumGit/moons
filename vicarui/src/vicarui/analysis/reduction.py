@@ -61,7 +61,7 @@ def br_reduction(
     """
 
     img: np.ndarray
-    if border > 0 and border * 2 + 20 < len(image.get_image()):
+    if image.is_border_valid(border):
         img = remove_invalid(image)[border + 1:-1 * border, border + 1:-1 * border]
     else:
         img = remove_invalid(image)

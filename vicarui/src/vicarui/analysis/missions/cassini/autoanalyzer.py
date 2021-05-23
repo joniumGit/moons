@@ -153,6 +153,7 @@ def show(
         color: str
         style: str
         title: str = ""
+        log: bool = False
 
         @cached_property
         def line(self):
@@ -177,12 +178,15 @@ def show(
 
     def to_eq(x):
         return (
-            "$\n"
-            fr"$k: \, {sci_4(x.estimator_.coef_[0])}$"
-            "\n"
-            fr"$a: \, {sci_4(x.estimator_.coef_[1])}$"
-            "\n"
-            fr"$b: \, {sci_4(x.estimator_.intercept_)}$$\,"
+                "$\n"
+                fr"$k: \, {sci_4(x.estimator_.coef_[0])}$"
+                + (
+                    "\n"
+                    fr"$a: \, {sci_4(x.estimator_.coef_[1])}$"
+                    if len(x.estimator_.coef_) == 2 else ""
+                )
+                + "\n"
+                  fr"$b: \, {sci_4(x.estimator_.intercept_)}$$\,"
         )
 
     plots = cast(Dict[str, Axes], plots)
@@ -191,17 +195,27 @@ def show(
             color="blue",
             style="-",
             title=r"$\frac{k}{x} + b$""\n",
+            # pipe_producer=make_pipeline,
             pipe_producer=lambda r: make_pipeline(FunctionTransformer(np.reciprocal, np.reciprocal), r),
             reg=make_sac(LinearRegression(n_jobs=-1)),
-            eq_producer=lambda r: fr"k: \, {sci_4(r.estimator_.coef_[0])} \, b: \, {sci_4(r.estimator_.intercept_)}"
+            eq_producer=to_eq
         ),
         Pipe(
             color="red",
             style="-",
             title=r"$kx^a + b$",
-            pipe_producer=lambda reg: make_pipeline(reg),
+            pipe_producer=make_pipeline,
             reg=make_sac(OnePerRegression()),
-            eq_producer=lambda reg: to_eq(reg)
+            eq_producer=to_eq
+        ),
+        Pipe(
+            color="magenta",
+            style="-",
+            title=r"$\log y = a\log x + b$""\n",
+            pipe_producer=lambda r: make_pipeline(FunctionTransformer(np.log1p, np.expm1), r),
+            reg=make_sac(LinearRegression(n_jobs=-1)),
+            eq_producer=to_eq,
+            log=True
         )
     ]
 
@@ -214,7 +228,7 @@ def show(
     ]
 
     contrast, integral = (np.asarray([fit[i] for fit in fits]) for i in (0, 1))
-    contrast, integral = (to_zero_one(v) for v in (contrast, integral))
+    # contrast, integral = (to_zero_one(v) for v in (contrast, integral))
 
     p = iter([plots[CONTRAST_TARGET], plots[INTEGRAL_TARGET], plots[CONTRAST_SHADOW], plots[INTEGRAL_SHADOW]])
     name = iter([CONTRAST_TARGET, INTEGRAL_TARGET, CONTRAST_SHADOW, INTEGRAL_SHADOW])
@@ -226,9 +240,15 @@ def show(
 
         for pipe in pipes:
             try:
-                pipe.line.fit(dist_[..., None], data_)
-                y = pipe.line.predict(x_[..., None])
-                mse = mean_squared_error(data_, pipe.line.predict(dist_[..., None]))
+                if not pipe.log:
+                    pipe.line.fit(dist_[..., None], data_)
+                    y = pipe.line.predict(x_[..., None])
+                    mse = mean_squared_error(data_, pipe.line.predict(dist_[..., None]))
+                else:
+                    pipe.line.fit(dist_[..., None], np.log1p(data_))
+                    y = pipe.line.predict(x_[..., None])
+                    y = np.expm1(y)
+                    mse = mean_squared_error(np.log1p(data_), pipe.line.predict(dist_[..., None]))
                 log.info(
                     "FIT,"
                     + tget
@@ -244,10 +264,8 @@ def show(
                     label=fr"{pipe.title}$\, mse: {sci_4(mse)} \, {pipe.eq}$"
                 )
                 ax.legend()
-            except Exception as e:
-                from traceback import format_exception_only
-                from sys import last_type
-                log.exception("Failed a regression analysis" + format_exception_only(last_type, e)[0])
+            except ValueError:
+                log.exception("Failed a regression analysis")
         try:
             ax.set_ylim(0, np.percentile(data_, 95))
             pass
@@ -260,7 +278,7 @@ def show(
     from warnings import catch_warnings, filterwarnings
 
     with catch_warnings():
-        filterwarnings('ignore', r'.*Undefined')
+        filterwarnings('ignore', r'.*R.*')
         for dist in dists:
             x = np.linspace(np.min(dist), np.max(dist), num=256)
             plot_(x, dist, contrast)
@@ -348,11 +366,11 @@ def auto(*_, image: ImageWrapper = None, **config):
                     ax.plot(
                         [rect.get_x(), rect.get_x() + rect.get_width()],
                         [rect.get_y(), rect.get_y() + rect.get_height()],
-                        color="gray",
+                        color="blue",
                         alpha=0.65
                     )
                 else:
-                    rect.set_color("gray")
+                    rect.set_color("blue")
                     rect.set_alpha(0.65)
                     ax.add_patch(rect)
                 yield t[1]

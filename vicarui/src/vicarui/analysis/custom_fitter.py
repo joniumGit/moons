@@ -9,7 +9,7 @@ from sklearn.utils.validation import check_array, check_is_fitted
 
 class OnePerRegression(RegressorMixin, BaseEstimator):
     """
-    Regression model for k * x ** a + c
+    Regression model for k * x ** a + b
     """
 
     def __init__(self, initial_guess: Tuple[float, float, float] = (1, -1, 0)):
@@ -54,7 +54,7 @@ class OnePerRegression(RegressorMixin, BaseEstimator):
             self.fun,
             np.asarray(self.initial_guess).astype('float64'),
             bounds=self._constraint(),
-            loss='huber',
+            loss='linear',
             max_nfev=100
         )
 
@@ -70,3 +70,67 @@ class OnePerRegression(RegressorMixin, BaseEstimator):
             raise ValueError("Wrong number of features")
         x = np.average(X, axis=1)
         return self.coef_[0] * np.float_power(x, self.coef_[1]) + self.intercept_
+
+
+class ReciprocalRegression(RegressorMixin, BaseEstimator):
+    """
+    Regression model for k * 1 / x + b
+    """
+
+    def __init__(self, initial_guess: Tuple[float, float, float] = (1, 0)):
+        """
+        initial_guess:
+        - Tuple[float, float, float]
+        - k * 1 / x + b (k, a, b)
+
+        Constrained as follows:
+        - k[0,INF]
+        - b[0,INF]
+        """
+        super(ReciprocalRegression, self).__init__()
+        self.initial_guess = initial_guess
+
+    def _constraint(self):
+        return np.asarray((
+            [0, 0],
+            [np.inf, np.inf]
+        ))
+
+    def _more_tags(self):
+        return {
+            "poor_score": True
+        }
+
+    def fun(self, guess):
+        k, b = guess
+        return self.y_ - k * self.x_ + b
+
+    def fit(self, X, y):
+        if y is None:
+            raise ValueError()
+        x, y = check_X_y(X, y, y_numeric=True, force_all_finite=True, dtype='float64')
+
+        self.n_features_in_ = x.shape[1]
+        self.x_ = np.reciprocal(np.average(x, axis=1))
+        self.y_ = y
+
+        solution = least_squares(
+            self.fun,
+            np.asarray(self.initial_guess).astype('float64'),
+            bounds=self._constraint(),
+            loss='linear',
+            max_nfev=100
+        )
+
+        self.coef_ = [solution.x[0]]
+        self.intercept_ = solution.x[1]
+
+        return self
+
+    def predict(self, X):
+        check_is_fitted(self, 'coef_')
+        x: np.ndarray = check_array(X, force_all_finite=True, dtype='float64')
+        if x.shape[1] != self.n_features_in_:
+            raise ValueError("Wrong number of features")
+        x = np.average(X, axis=1)
+        return self.coef_[0] * np.reciprocal(x) + self.intercept_

@@ -47,12 +47,11 @@ class ImageWrapper(object):
 
     def get_processed(self):
         border = self.border
-        if border != 0:
-            img = self.get_image()[border + 1:-1 * border, border + 1:-1 * border]
-        else:
-            img = self.get_image()
+        img = self.get_image()
         if self.invalid_indices is not None:
             img = np.delete(img, self.invalid_indices, axis=0)
+        if border != 0 and self.is_border_valid(border):
+            img = img[border + 1:-1 * border, border + 1:-1 * border]
         img[np.logical_not(np.isfinite(img))] = np.average(img[np.isfinite(img)])
         if self.active:
             img = img - self.bg
@@ -63,5 +62,7 @@ class ImageWrapper(object):
     def get_image(self):
         return self.image_data.data[0]
 
-    def get_outliers(self):
-        return self.bg_outliers if self.active else np.zeros(self.get_image().shape)
+    def is_border_valid(self, border: int):
+        return border > 0 \
+               and border * 2 + 20 < len(self.get_image()) \
+               and border * 2 + 20 < len(self.get_image()[0])
