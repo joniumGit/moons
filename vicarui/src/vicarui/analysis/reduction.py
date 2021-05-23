@@ -119,15 +119,22 @@ def br_reduction(
         mse = 0.0
         minus = np.zeros(img.shape)
 
-    if normalize:
-        img = (img - np.min(img)) * 1 / (np.max(img) - np.min(img))
-        image.normalized = True
-    else:
-        image.normalized = False
+    try:
+        if normalize:
+            img = (img - np.min(img)) * 1 / (np.max(img) - np.min(img))
+            image.normalized = True
+        else:
+            image.normalized = False
 
-    if reduce:
-        image.active = True
-    else:
+        if reduce:
+            image.active = True
+        else:
+            image.active = False
+    except Exception as e:
+        from ..support import handle_exception
+        handle_exception(e)
+        mse = 0.0
+        minus = np.zeros(img.shape)
         image.active = False
 
     return img, minus, mse
