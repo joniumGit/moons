@@ -230,59 +230,57 @@ def show(
     contrast, integral = (np.asarray([fit[i] for fit in fits]) for i in (0, 1))
     # contrast, integral = (to_zero_one(v) for v in (contrast, integral))
 
-    p = iter([plots[CONTRAST_TARGET], plots[INTEGRAL_TARGET], plots[CONTRAST_SHADOW], plots[INTEGRAL_SHADOW]])
-    name = iter([CONTRAST_TARGET, INTEGRAL_TARGET, CONTRAST_SHADOW, INTEGRAL_SHADOW])
-
-    def plot_(x_, dist_, data_):
-        ax: Axes = p.__next__()
-        ax.scatter(dist_, data_, c="gray", s=4, alpha=0.65)
-        tget = name.__next__()
-
-        for pipe in pipes:
-            try:
-                if not pipe.log:
-                    pipe.line.fit(dist_[..., None], data_)
-                    y = pipe.line.predict(x_[..., None])
-                    mse = mean_squared_error(data_, pipe.line.predict(dist_[..., None]))
-                else:
-                    pipe.line.fit(dist_[..., None], np.log1p(data_))
-                    y = pipe.line.predict(x_[..., None])
-                    y = np.expm1(y)
-                    mse = mean_squared_error(np.log1p(data_), pipe.line.predict(dist_[..., None]))
-                log.info(
-                    "FIT,"
-                    + tget
-                    + ","
-                    + type(pipe.reg.estimator_).__name__
-                    + ","
-                    + ",".join((f"{v:.4e}" for v in [*pipe.reg.estimator_.coef_, pipe.reg.estimator_.intercept_, mse]))
-                )
-                ax.plot(
-                    x_, y,
-                    color=pipe.color,
-                    linestyle=pipe.style,
-                    label=fr"{pipe.title}$\, mse: {sci_4(mse)} \, {pipe.eq}$"
-                )
-                ax.legend()
-            except ValueError:
-                log.exception("Failed a regression analysis")
-        try:
-            ax.set_ylim(0, np.percentile(data_, 95))
-            pass
-        except ValueError:
-            pass
-
-        ax.figure.canvas.draw()
-        ax.figure.canvas.flush_events()
-
+    names = [CONTRAST_TARGET, INTEGRAL_TARGET, CONTRAST_SHADOW, INTEGRAL_SHADOW]
     from warnings import catch_warnings, filterwarnings
-
     with catch_warnings():
         filterwarnings('ignore', r'.*R.*')
-        for dist in dists:
-            x = np.linspace(np.min(dist), np.max(dist), num=256)
-            plot_(x, dist, contrast)
-            plot_(x, dist, integral)
+        for pipe in pipes:
+            for tget in names:
+
+                data_ = contrast if 'c' in tget else integral
+                dist_ = dists[0] if 'tg' in tget else dists[1]
+                x_ = np.linspace(np.min(dist_), np.max(dist_), num=256)
+
+                ax: Axes = plots[tget]
+                ax.scatter(dist_, data_, c="gray", s=4, alpha=0.65)
+
+                try:
+                    if not pipe.log:
+                        pipe.line.fit(dist_[..., None], data_)
+                        y = pipe.line.predict(x_[..., None])
+                        mse = mean_squared_error(data_, pipe.line.predict(dist_[..., None]))
+                    else:
+                        pipe.line.fit(dist_[..., None], np.log1p(data_))
+                        y = pipe.line.predict(x_[..., None])
+                        y = np.expm1(y)
+                        mse = mean_squared_error(np.log1p(data_), pipe.line.predict(dist_[..., None]))
+                    log.info(
+                        "FIT,"
+                        + tget
+                        + ","
+                        + type(pipe.reg.estimator_).__name__
+                        + ","
+                        + ",".join(
+                            (f"{v:.4e}" for v in [*pipe.reg.estimator_.coef_, pipe.reg.estimator_.intercept_, mse]))
+                    )
+                    ax.plot(
+                        x_, y,
+                        color=pipe.color,
+                        linestyle=pipe.style,
+                        label=fr"{pipe.title}$\, mse: {sci_4(mse)} \, {pipe.eq}$"
+                    )
+                    ax.legend()
+                except ValueError:
+                    log.exception("Failed a regression analysis")
+
+                try:
+                    ax.set_ylim(0, np.percentile(data_, 95))
+                    pass
+                except ValueError:
+                    pass
+
+                ax.figure.canvas.draw()
+                ax.figure.canvas.flush_events()
 
     log.info("done")
 
