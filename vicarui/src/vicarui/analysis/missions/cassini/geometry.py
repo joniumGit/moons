@@ -9,14 +9,15 @@ def view_geometry(*_, image: ImageWrapper = None, **config):
     """
     if image is not None:
         image: VicarImage = image.get_raw()
-        from PySide2.QtWidgets import QDialog, QHBoxLayout, QVBoxLayout, QSizePolicy, QTextEdit
+        from PySide2.QtWidgets import QHBoxLayout, QVBoxLayout, QSizePolicy, QTextEdit
         from PySide2.QtCore import Qt
         from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT
         from matplotlib.pyplot import Figure
         from mpl_toolkits.mplot3d import Axes3D
         from .entity import PlotPacket
+        from ....support import non_modal
 
-        d = QDialog()
+        d = non_modal()
         d.setWindowState(Qt.WindowMaximized)
         d.setWindowTitle("Image Geometry")
         layout = QHBoxLayout()
@@ -102,7 +103,7 @@ def view_geometry(*_, image: ImageWrapper = None, **config):
         d.setModal(True)
 
         agg.draw()
-        d.exec_()
+        d.setVisible(True)
 
 
 __all__ = ['view_geometry']

@@ -265,18 +265,19 @@ def auto(*_, image: ImageWrapper = None, **config):
         return
 
     from ...kernels import load_kernels_for_image, release_kernels
-    from PySide2.QtWidgets import QDialog, QHBoxLayout, QVBoxLayout, QLineEdit, QPushButton, QLabel
+    from PySide2.QtWidgets import QHBoxLayout, QVBoxLayout, QLineEdit, QPushButton, QLabel
     from PySide2.QtGui import QDoubleValidator, QIntValidator
     from PySide2.QtCore import Qt
     from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT
     from matplotlib.pyplot import Figure, Axes, Rectangle
     from matplotlib.backend_bases import MouseEvent, MouseButton
+    from ....support import modal
 
     try:
         load_kernels_for_image(image.get_raw())
         helper = FitHelper(image, ImageHelper(image.get_raw(), **config))
 
-        d = QDialog()
+        d = modal()
         d.setWindowTitle("Autofit")
         d.setWindowState(Qt.WindowMaximized)
 

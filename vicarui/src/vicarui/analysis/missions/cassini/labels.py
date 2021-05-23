@@ -7,11 +7,13 @@ from .helpers import ImageHelper
 def view_labels(*_, image: ImageWrapper = None, **__):
     if image:
         image: VicarImage = image.get_raw()
-        from PySide2.QtWidgets import QDialog, QTextEdit, QHBoxLayout, QVBoxLayout, QLabel
+        from PySide2.QtWidgets import QTextEdit, QHBoxLayout, QVBoxLayout, QLabel
         from PySide2.QtCore import QSize
         from ....viewer.helper import CT
+        from ....support import non_modal
 
-        dia = QDialog()
+        dia = non_modal()
+        dia.setModal(False)
 
         helper = ImageHelper(image)
 
@@ -35,7 +37,7 @@ def view_labels(*_, image: ImageWrapper = None, **__):
 
         dia.setLayout(layout)
         dia.resize(QSize(480, 640))
-        dia.exec_()
+        dia.setVisible(True)
 
 
 __all__ = ['view_labels']
