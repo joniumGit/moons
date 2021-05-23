@@ -1,6 +1,7 @@
 from collections import Generator
 from dataclasses import dataclass
-from typing import Any, NoReturn, Callable, Optional
+from functools import cached_property, partial
+from typing import Any, NoReturn, Callable, TypeVar
 
 from .config import *
 from .funcs import norm
@@ -17,9 +18,14 @@ CONTRAST_SHADOW = "c-sh"
 CONTRAST_TARGET = "c-tg"
 
 
+def to_zero_one(v: np.ndarray) -> np.ndarray:
+    return (v - np.min(v)) * 1 / (np.max(v) - np.min(v))
+
+
 @dataclass(frozen=False)
 class Selection:
     initial_position: Tuple[float, float]
+    target_position: Tuple[float, float]
     is_vertical: bool
     shadow_radius: float
     width: int
@@ -35,7 +41,7 @@ class Fit:
     distance_px: Tuple[float, float]
 
     def is_finite(self):
-        return np.alltrue(np.isfinite([self.contrast, self.integral]))
+        return np.alltrue(np.isfinite([self.contrast, self.integral])) and self.contrast > 0 and self.integral > 0
 
     def __getitem__(self, i: int):
         if i == 0:
@@ -97,12 +103,9 @@ class FitHelper:
 
         shadow = self.shadow
         initial = s.initial_position
-        start_x = int(initial[0])
-        start_y = int(initial[1])
 
         autofit = self.autofit
-        autofit.start_x = start_x
-        autofit.start_y = start_y
+        autofit.start_x, autofit.start_y = s.target_position
 
         if vertical:
             for i in range(
@@ -130,74 +133,122 @@ def show(
         helper: ImageHelper,
         results: Generator[Fit],
         plots: Dict,
-        func_fwd: Callable[[float], float] = np.reciprocal,
-        func_bwd: Optional[Callable[[float], float]] = None
 ) -> NoReturn:
     from matplotlib.pyplot import Axes
     from sklearn.preprocessing import FunctionTransformer
     from sklearn.pipeline import make_pipeline, Pipeline
-    from sklearn.linear_model import HuberRegressor
+    from sklearn.linear_model import RANSACRegressor, LinearRegression
     from sklearn.metrics import mean_squared_error
     from typing import cast
+    from ...tex import sci_4
+    from ...custom_fitter import OnePerRegression
+
+    type_var = TypeVar('type_var')
 
     @dataclass(frozen=False)
     class Pipe:
-        line: Pipeline
+        reg: type_var
+        eq_producer: Callable[[type_var], str]
+        pipe_producer: Callable[[type_var], Pipeline]
         color: str
         style: str
         title: str = ""
 
-    plots = cast(Dict[str, Axes], plots)
-    pipes = [
-        Pipe(
-            color="yellow",
-            style="-",
-            line=make_pipeline(FunctionTransformer(np.reciprocal), HuberRegressor())
-        ),
-        Pipe(
-            color="magenta",
-            style="-",
-            line=make_pipeline(FunctionTransformer(np.log1p, np.expm1), HuberRegressor())
-        ),
-        Pipe(
-            color="cyan",
-            style="-",
-            line=make_pipeline(FunctionTransformer(func_fwd, func_bwd), HuberRegressor())
-        ),
-    ]
+        @cached_property
+        def line(self):
+            return self.pipe_producer(self.reg)
+
+        @cached_property
+        def eq(self):
+            return self.eq_producer(self.reg)
 
     fits = list()
     for fit in results:
         if fit.is_finite():
             fits.append(fit)
 
-    px_dist = np.asarray([fit[2] for fit in fits])
-    tgt_size = helper.per_px(helper.size_at_target)
-    sh_size = helper.per_px(helper.size_at_shadow)
-    dists = [
-        np.asarray([np.sqrt(np.sum(np.power(np.multiply(d, tgt_size), 2))) for d in px_dist]),
-        np.asarray([np.sqrt(np.sum(np.power(np.multiply(d, sh_size), 2))) for d in px_dist])
+    def make_sac(base):
+        return RANSACRegressor(
+            random_state=0,
+            max_trials=1000,
+            min_samples=int(np.sqrt(len(fits))),
+            base_estimator=base,
+        )
+
+    def to_eq(x):
+        return (
+            "$\n"
+            fr"$k: \, {sci_4(x.estimator_.coef_[0])}$"
+            "\n"
+            fr"$a: \, {sci_4(x.estimator_.coef_[1])}$"
+            "\n"
+            fr"$b: \, {sci_4(x.estimator_.intercept_)}$$\,"
+        )
+
+    plots = cast(Dict[str, Axes], plots)
+    pipes = [
+        Pipe(
+            color="blue",
+            style="-",
+            title=r"$\frac{k}{x} + b$""\n",
+            pipe_producer=lambda r: make_pipeline(FunctionTransformer(np.reciprocal, np.reciprocal), r),
+            reg=make_sac(LinearRegression(n_jobs=-1)),
+            eq_producer=lambda r: fr"k: \, {sci_4(r.estimator_.coef_[0])} \, b: \, {sci_4(r.estimator_.intercept_)}"
+        ),
+        Pipe(
+            color="red",
+            style="-",
+            title=r"$kx^a + b$",
+            pipe_producer=lambda reg: make_pipeline(reg),
+            reg=make_sac(OnePerRegression()),
+            eq_producer=lambda reg: to_eq(reg)
+        )
     ]
 
-    contrast = np.asarray([fit[0] for fit in fits])
-    integral = np.asarray([fit[1] for fit in fits])
+    px_dist = np.asarray([fit[2] for fit in fits])
+    tgt_size = np.asarray(helper.per_px(helper.size_at_target))
+    sh_size = np.asarray(helper.per_px(helper.size_at_shadow))
+    dists = [
+        np.asarray([np.sqrt((d[0] * tgt_size[0]) ** 2 + (d[1] * tgt_size[1]) ** 2) for d in px_dist]),
+        np.asarray([np.sqrt((d[0] * sh_size[0]) ** 2 + (d[1] * sh_size[1]) ** 2) for d in px_dist]),
+    ]
+
+    contrast, integral = (np.asarray([fit[i] for fit in fits]) for i in (0, 1))
+    contrast, integral = (to_zero_one(v) for v in (contrast, integral))
 
     p = iter([plots[CONTRAST_TARGET], plots[INTEGRAL_TARGET], plots[CONTRAST_SHADOW], plots[INTEGRAL_SHADOW]])
+    name = iter([CONTRAST_TARGET, INTEGRAL_TARGET, CONTRAST_SHADOW, INTEGRAL_SHADOW])
 
     def plot_(x_, dist_, data_):
         ax: Axes = p.__next__()
-        ax.scatter(dist_, data_, c="gray", s=8)
-        from ...tex import sci_4
+        ax.scatter(dist_, data_, c="gray", s=4, alpha=0.65)
+        tget = name.__next__()
+
         for pipe in pipes:
             try:
                 pipe.line.fit(dist_[..., None], data_)
                 y = pipe.line.predict(x_[..., None])
                 mse = mean_squared_error(data_, pipe.line.predict(dist_[..., None]))
-                ax.plot(x_, y, color=pipe.color, linestyle=pipe.style, label=pipe.title + f" mse: ${sci_4(mse)}$")
+                log.info(
+                    "FIT,"
+                    + tget
+                    + ","
+                    + type(pipe.reg.estimator_).__name__
+                    + ","
+                    + ",".join((f"{v:.4e}" for v in [*pipe.reg.estimator_.coef_, pipe.reg.estimator_.intercept_, mse]))
+                )
+                ax.plot(
+                    x_, y,
+                    color=pipe.color,
+                    linestyle=pipe.style,
+                    label=fr"{pipe.title}$\, mse: {sci_4(mse)} \, {pipe.eq}$"
+                )
+                ax.legend()
             except Exception as e:
                 log.exception("Failed a regression analysis", exc_info=e)
         try:
-            ax.set_ylim(np.percentile(data_, 2), np.percentile(data_, 98))
+            ax.set_ylim(0, np.percentile(data_, 95))
+            pass
         except ValueError:
             pass
 
@@ -206,8 +257,7 @@ def show(
         plot_(x, dist, contrast)
         plot_(x, dist, integral)
 
-    for plot in p:
-        plot.legend()
+    log.info("done")
 
 
 def auto(*_, image: ImageWrapper = None, **config):
@@ -215,12 +265,12 @@ def auto(*_, image: ImageWrapper = None, **config):
         return
 
     from ...kernels import load_kernels_for_image, release_kernels
-    from PySide2.QtWidgets import QDialog, QHBoxLayout, QVBoxLayout, QLineEdit, QPushButton
+    from PySide2.QtWidgets import QDialog, QHBoxLayout, QVBoxLayout, QLineEdit, QPushButton, QLabel
     from PySide2.QtGui import QDoubleValidator, QIntValidator
     from PySide2.QtCore import Qt
     from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT
     from matplotlib.pyplot import Figure, Axes, Rectangle
-    from matplotlib.backend_bases import MouseEvent
+    from matplotlib.backend_bases import MouseEvent, MouseButton
 
     try:
         load_kernels_for_image(image.get_raw())
@@ -247,8 +297,8 @@ def auto(*_, image: ImageWrapper = None, **config):
 
         plots[INTEGRAL_TARGET].sharey(plots[INTEGRAL_SHADOW])
         plots[INTEGRAL_TARGET].sharex(plots[CONTRAST_TARGET])
-        plots[CONTRAST_TARGET].sharey(plots[CONTRAST_SHADOW])
-        plots[INTEGRAL_SHADOW].sharex(plots[CONTRAST_SHADOW])
+        plots[CONTRAST_SHADOW].sharey(plots[CONTRAST_TARGET])
+        plots[CONTRAST_SHADOW].sharex(plots[INTEGRAL_SHADOW])
 
         t_size = helper.im_helper.per_px(helper.im_helper.size_at_target)
         sp_size = helper.im_helper.per_px(helper.im_helper.size_at_shadow)
@@ -267,7 +317,19 @@ def auto(*_, image: ImageWrapper = None, **config):
                 p.set_xlabel("Distance from start (km)")
 
         fig.set_tight_layout('true')
-        ax.imshow(helper.data)
+        imdata = helper.data.copy().astype('float64')
+        imdata[np.logical_not(np.isfinite(imdata))] = np.average(imdata[np.isfinite(imdata)])
+        imdata = to_zero_one(imdata)
+        ax.imshow = partial(
+            ax.imshow,
+            imdata,
+            cmap="gray",
+            norm=None,
+            aspect="equal",
+            interpolation='none',
+            origin='upper'
+        )
+        ax.imshow()
 
         def rect_intercept(gen: Generator[Tuple[Any, Fit]]) -> Generator[Fit]:
             for t in gen:
@@ -294,15 +356,21 @@ def auto(*_, image: ImageWrapper = None, **config):
         window = QLineEdit()
         length = QLineEdit()
         radius = QLineEdit()
+
+        initial_label = QLabel("Selection start (L click)")
         initial_x = QLineEdit()
         initial_y = QLineEdit()
 
-        np_func = QLineEdit()
-        np_reverse_func = QLineEdit()
+        target_label = QLabel("Target Center (R click)")
+        target_x = QLineEdit()
+        target_y = QLineEdit()
+
+        # ♥
 
         def to_selection(vertical: bool) -> Selection:
             return Selection(
                 initial_position=(float(initial_x.text()), float(initial_y.text())),
+                target_position=(float(target_x.text()), float(target_y.text())),
                 is_vertical=vertical,
                 shadow_radius=float(radius.text()),
                 length=int(length.text()),
@@ -310,10 +378,7 @@ def auto(*_, image: ImageWrapper = None, **config):
                 window=int(window.text())
             )
 
-        np_func.setPlaceholderText("Numpy Function")
-        np_reverse_func.setPlaceholderText("Numpy Reverse Function")
-
-        for le in [width, window, initial_x, initial_y, radius]:
+        for le in [width, window, initial_x, initial_y, radius, target_x, target_y]:
             le.setValidator(QDoubleValidator())
 
         length.setValidator(QIntValidator())
@@ -326,8 +391,12 @@ def auto(*_, image: ImageWrapper = None, **config):
         def make_visible(vertical: bool):
             ax.clear()
             clear_subs()
-            ax.imshow(helper.data)
-            show(helper.im_helper, rect_intercept(helper(to_selection(vertical))), plots)
+            ax.imshow()
+            show(
+                helper.im_helper,
+                rect_intercept(helper(to_selection(vertical))),
+                plots
+            )
             agg.draw()
             agg.flush_events()
 
@@ -339,19 +408,27 @@ def auto(*_, image: ImageWrapper = None, **config):
             window,
             length,
             radius,
+            initial_label,
             initial_x,
             initial_y,
-            np_func,
-            np_reverse_func,
+            target_label,
+            target_x,
+            target_y,
             fit_horizontal,
             fit_vertical
         ]:
             buttons.addWidget(c)
 
         def press_event(e: MouseEvent):
+            if e.canvas.cursor().shape() != 0:
+                return
             if e.inaxes == ax:
-                initial_x.setText(str(e.xdata))
-                initial_y.setText(str(e.ydata))
+                if e.button == MouseButton.LEFT:
+                    initial_x.setText(str(e.xdata))
+                    initial_y.setText(str(e.ydata))
+                elif e.button == MouseButton.RIGHT:
+                    target_x.setText(str(e.xdata))
+                    target_y.setText(str(e.ydata))
 
         fig.canvas.mpl_connect('button_press_event', press_event)
         fit_vertical.clicked.connect(lambda _: make_visible(True))

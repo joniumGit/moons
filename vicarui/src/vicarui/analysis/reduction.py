@@ -1,7 +1,7 @@
 from typing import Tuple, Optional
 
 import numpy as np
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import RANSACRegressor, LinearRegression
 from sklearn.metrics import mean_squared_error
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import PolynomialFeatures
@@ -28,7 +28,7 @@ def br_reduction(
         reduce: bool = True,
         normalize: bool = True,
         degree: int = 3,
-        border: int = 2
+        border: int = 2,
 ) -> Tuple[np.ndarray, np.ndarray, float]:
     """
     Polynomial background reduction and image normalization
@@ -69,20 +69,29 @@ def br_reduction(
     gen_bg: bool = True
 
     mse = 0.0
-    if image.get_bg() is not None:
-        minus = image.get_bg()
+    if image.bg is not None:
+        minus = image.bg
         gen_bg = not (
                 img.shape == minus.shape
-                and image.get_degree() == degree
-                and normalize == image.is_normalized()
+                and image.bg_degree == degree
+                and normalize == image.normalized
         )
-        mse = image.get_mse() or 0.0
+        mse = image.mse or 0.0
 
     image.border = border
 
     try:
         if reduce and gen_bg:
-            pipe = make_pipeline(PolynomialFeatures(degree=degree, include_bias=False), LinearRegression(n_jobs=-1))
+            reg = RANSACRegressor(
+                max_trials=100,
+                min_samples=int(np.sqrt(img.shape[0] * img.shape[1])),
+                base_estimator=LinearRegression(n_jobs=-1),
+                random_state=0
+            )
+            pipe = make_pipeline(
+                PolynomialFeatures(degree=degree, include_bias=False),
+                reg
+            )
             indexes = list()
             for i in range(0, len(img)):
                 for j in range(0, len(img[0])):
@@ -90,9 +99,14 @@ def br_reduction(
             indexes = np.asarray(indexes)
             pipe.fit(indexes, img.ravel())
             pred = pipe.predict(indexes)
-            mse = mean_squared_error(img.ravel(), pred)
+            mse = mean_squared_error(
+                img.ravel(),
+                pred
+            )
             minus = pred.reshape(img.shape)
             image.add_bg(degree, minus, mse)
+            imask = reg.inlier_mask_.reshape(img.shape)
+            image.bg_outliers = np.ma.masked_where(imask, imask)
             info(f"Background mse: {mse:.5e}")
         if reduce and minus is not None:
             img = img - minus

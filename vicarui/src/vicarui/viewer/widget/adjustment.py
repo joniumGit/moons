@@ -47,7 +47,7 @@ class AdjustmentWidget(qt.QWidget):
         self.border_value = border_value
 
         img_proc_toggle = qt.QCheckBox(text="Post-Processing")
-        img_proc_toggle.setChecked(True)
+        img_proc_toggle.setChecked(False)
         self.img_proc_toggle = img_proc_toggle
 
         layout = qt.QHBoxLayout()

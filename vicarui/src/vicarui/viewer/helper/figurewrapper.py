@@ -71,6 +71,7 @@ class FigureWrapper(FigureCanvasQTAgg):
 
         og.imshow(image.get_image(), cmap="gray", interpolation='none', origin='upper')
         bg.imshow(mask, cmap="coolwarm", interpolation='none', origin='upper')
+        bg.imshow(image.get_outliers(), cmap='binary_r', interpolation="none", origin="upper", alpha=0.3)
         bg.set_title(bg.get_title() + f" mse: {err:.5e}")
 
         normalizer = norm(reduced)

@@ -1,10 +1,12 @@
+from vicarutil.image import VicarImage
+
 from .config import ImageWrapper
 from .helpers import ImageHelper
 
 
 def view_labels(*_, image: ImageWrapper = None, **__):
     if image:
-        image: ImageHelper = image.get_raw()
+        image: VicarImage = image.get_raw()
         from PySide2.QtWidgets import QDialog, QTextEdit, QHBoxLayout, QVBoxLayout, QLabel
         from PySide2.QtCore import QSize
         from ....viewer.helper import CT

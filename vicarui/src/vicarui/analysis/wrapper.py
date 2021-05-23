@@ -7,10 +7,14 @@ from vicarutil.image import VicarImage
 class ImageWrapper(object):
     image_data: VicarImage
     bg: Optional[np.ndarray]
+    bg_outliers: Optional[np.ndarray]
+
     bg_degree: Optional[int]
     normalized: Optional[bool]
     mse: Optional[float]
+
     invalid_indices: Optional[np.ndarray]
+
     border: int
     active: bool
 
@@ -20,6 +24,7 @@ class ImageWrapper(object):
 
         self.bg = None
         self.bg_degree = None
+        self.bg_outliers = None
         self.mse = None
         self.invalid_indices = None
 
@@ -46,8 +51,11 @@ class ImageWrapper(object):
             img = self.get_image()[border + 1:-1 * border, border + 1:-1 * border]
         else:
             img = self.get_image()
+        if self.invalid_indices is not None:
+            img = np.delete(img, self.invalid_indices, axis=0)
+        img[np.logical_not(np.isfinite(img))] = np.average(img[np.isfinite(img)])
         if self.active:
-            img = img - self.get_bg()
+            img = img - self.bg
         if self.normalized:
             img = (img - np.min(img)) * 1 / (np.max(img) - np.min(img))
         return img
@@ -55,14 +63,5 @@ class ImageWrapper(object):
     def get_image(self):
         return self.image_data.data[0]
 
-    def get_bg(self):
-        return self.bg
-
-    def get_degree(self):
-        return self.bg_degree
-
-    def is_normalized(self):
-        return self.normalized
-
-    def get_mse(self):
-        return self.mse
+    def get_outliers(self):
+        return self.bg_outliers if self.active else np.zeros(self.get_image().shape)

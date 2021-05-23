@@ -11,7 +11,7 @@ from ...internal import log as parent_logger
 # noinspection PyUnresolvedReferences
 from ...wrapper import ImageWrapper
 
-log = parent_logger.getChild("cassini")
+log = parent_logger.getChild("cas")
 log.debug('Initializing SPICE: %s' + spice.tkvrsn('TOOLKIT'))
 
 # https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/naif_ids.html

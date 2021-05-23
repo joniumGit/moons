@@ -182,14 +182,19 @@ class DataPacket(object):
         from sklearn.metrics import mean_squared_error
 
         # BG
-        bg_reg = RANSACRegressor(random_state=0, max_trials=1000, base_estimator=LinearRegression())
+        bg_reg = RANSACRegressor(
+            random_state=0,
+            max_trials=1000,
+            min_samples=int(np.sqrt(len(y_in))),
+            base_estimator=LinearRegression()
+        )
         pipe = make_pipeline(PolynomialFeatures(self.degree, include_bias=False), bg_reg)
         pipe.fit(x_out, y_out)
         pred_y_out = pipe.predict(nx_out[..., None])
         bg_title = reg_to_title(bg_reg.estimator_, 'BG:')
 
         # FG
-        fg_reg = LinearRegression(n_jobs=-1)
+        fg_reg = LinearRegression()
         pipe = make_pipeline(PolynomialFeatures(self.degree, include_bias=False), fg_reg)
         pipe.fit(x_in, y_in)
 
@@ -208,7 +213,8 @@ class DataPacket(object):
 
         from .tex import sci_4
         fg_mse = f'${sci_4(mean_squared_error(y_in, pipe.predict(x_in)))}$'
-        bg_mse = f'${sci_4(mean_squared_error(y_out, pipe.predict(x_out)))}$' + add
+        bg_err = sci_4(mean_squared_error(y_out, pipe.predict(x_out)))
+        bg_mse = f'${bg_err}$' + add
 
         return {
             'BG': {
