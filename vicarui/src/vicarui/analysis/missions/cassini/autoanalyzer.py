@@ -167,10 +167,10 @@ def show(
         if fit.is_finite():
             fits.append(fit)
 
-    def make_sac(base):
+    def make_sac(base, max_trials=1000):
         return RANSACRegressor(
             random_state=0,
-            max_trials=1000,
+            max_trials=max_trials,
             min_samples=int(np.sqrt(len(fits))),
             base_estimator=base,
         )
@@ -245,17 +245,26 @@ def show(
                 )
                 ax.legend()
             except Exception as e:
-                log.exception("Failed a regression analysis", exc_info=e)
+                from traceback import format_exception_only
+                from sys import last_type
+                log.exception("Failed a regression analysis" + format_exception_only(last_type, e)[0])
         try:
             ax.set_ylim(0, np.percentile(data_, 95))
             pass
         except ValueError:
             pass
 
-    for dist in dists:
-        x = np.linspace(np.min(dist), np.max(dist), num=256)
-        plot_(x, dist, contrast)
-        plot_(x, dist, integral)
+        ax.figure.canvas.draw()
+        ax.figure.canvas.flush_events()
+
+    from warnings import catch_warnings, filterwarnings
+
+    with catch_warnings():
+        filterwarnings('ignore', r'.*Undefined')
+        for dist in dists:
+            x = np.linspace(np.min(dist), np.max(dist), num=256)
+            plot_(x, dist, contrast)
+            plot_(x, dist, integral)
 
     log.info("done")
 

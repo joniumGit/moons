@@ -54,7 +54,8 @@ class OnePerRegression(RegressorMixin, BaseEstimator):
             self.fun,
             np.asarray(self.initial_guess).astype('float64'),
             bounds=self._constraint(),
-            loss='huber'
+            loss='huber',
+            max_nfev=100
         )
 
         self.coef_ = [solution.x[0], solution.x[1]]

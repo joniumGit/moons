@@ -10,6 +10,7 @@ def non_modal() -> QDialog:
           & ~Qt.WindowContextHelpButtonHint
           | Qt.WindowCloseButtonHint
     )
+    _dialogs.append(dia)
 
     __onclose = dia.closeEvent
 
@@ -29,6 +30,7 @@ def modal() -> QDialog:
           | Qt.WindowCloseButtonHint
     )
     dia.setModal(True)
+    _dialogs.append(dia)
 
     __onclose = dia.closeEvent
 
