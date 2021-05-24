@@ -1,6 +1,5 @@
 from collections import Generator
 from dataclasses import dataclass
-from functools import cached_property
 from typing import Any, Callable, TypeVar
 
 from sklearn.pipeline import Pipeline
@@ -58,11 +57,11 @@ class Pipe:
     title: str = ""
     log: bool = False
 
-    @cached_property
+    @property
     def line(self):
         return self.pipe_producer(self.reg)
 
-    @cached_property
+    @property
     def eq(self):
         return self.eq_producer(self.reg)
 

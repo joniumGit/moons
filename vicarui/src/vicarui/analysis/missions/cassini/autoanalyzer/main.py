@@ -28,6 +28,8 @@ def auto(*_, image: ImageWrapper = None, **config):
     try:
         load_kernels_for_image(image.raw)
         helper = FitHelper(image, ImageHelper(image.raw, **config))
+        t_size = helper.im_helper.per_px(helper.im_helper.size_at_target)
+        sp_size = helper.im_helper.per_px(helper.im_helper.size_at_shadow)
 
         d = modal()
         d.setWindowTitle("Autofit")
@@ -45,28 +47,27 @@ def auto(*_, image: ImageWrapper = None, **config):
             INTEGRAL_TARGET: fig.add_subplot(247, label="Integral at Target"),
             INTEGRAL_SHADOW: fig.add_subplot(248, label="Integral at Shadow"),
             CONTRAST_TARGET: fig.add_subplot(243, label="Contrast at Target"),
-            CONTRAST_SHADOW: fig.add_subplot(244, label="Contrast at Shadow♥")
+            CONTRAST_SHADOW: fig.add_subplot(244, label="Contrast at Shadow")
+        }
+
+        titles: Dict[str, str] = {
+            INTEGRAL_TARGET: fr"Integral in Target plane $({sci_2(t_size[0])}\,km/px,\,{sci_2(t_size[1])}\,km/px)$",
+            INTEGRAL_SHADOW: fr"Integral in Shadow plane $({sci_2(sp_size[0])}\,km/px,\,{sci_2(sp_size[1])}\,km/px)$",
+            CONTRAST_TARGET: fr"Contrast in Target plane $({sci_2(t_size[0])}\,km/px,\,{sci_2(t_size[1])}\,km/px)$",
+            CONTRAST_SHADOW: fr"Contrast in Shadow plane $({sci_2(sp_size[0])}\,km/px,\,{sci_2(sp_size[1])}\,km/px)$"
         }
 
         plots[INTEGRAL_TARGET].sharey(plots[INTEGRAL_SHADOW])
         plots[INTEGRAL_TARGET].sharex(plots[CONTRAST_TARGET])
+
         plots[CONTRAST_SHADOW].sharey(plots[CONTRAST_TARGET])
         plots[CONTRAST_SHADOW].sharex(plots[INTEGRAL_SHADOW])
 
-        t_size = helper.im_helper.per_px(helper.im_helper.size_at_target)
-        sp_size = helper.im_helper.per_px(helper.im_helper.size_at_shadow)
-
         def clear_subs():
-
-            titles = [
-                fr"Integral in Target plane $({sci_2(t_size[0])}\,km/px,\,{sci_2(t_size[1])}\,km/px)$",
-                fr"Integral in Shadow plane $({sci_2(sp_size[0])}\,km/px,\,{sci_2(sp_size[1])}\,km/px)$",
-                fr"Contrast in Target plane $({sci_2(t_size[0])}\,km/px,\,{sci_2(t_size[1])}\,km/px)$",
-                fr"Contrast in Shadow plane $({sci_2(sp_size[0])}\,km/px,\,{sci_2(sp_size[1])}\,km/px)$"
-            ]
-            for p, title in zip(plots.values(), titles):
+            for k in plots:
+                p = plots[k]
                 p.clear()
-                p.set_title(title)
+                p.set_title(titles[k])
                 p.set_xlabel("Distance from start (km)")
 
         fig.set_tight_layout('true')
