@@ -27,9 +27,13 @@ class OnePerRegression(RegressorMixin, BaseEstimator):
         self.initial_guess = initial_guess
 
     def _constraint(self):
+        # return np.asarray((
+        #     [0, -15, 0],
+        #     [np.inf, -1, np.inf]
+        # ))
         return np.asarray((
-            [0, -15, 0],
-            [np.inf, -1, np.inf]
+            [-np.inf, -np.inf, -np.inf],
+            [np.inf, np.inf, np.inf]
         ))
 
     def _more_tags(self):
@@ -55,7 +59,6 @@ class OnePerRegression(RegressorMixin, BaseEstimator):
             np.asarray(self.initial_guess).astype('float64'),
             bounds=self._constraint(),
             loss='linear',
-            max_nfev=100
         )
 
         self.coef_ = [solution.x[0], solution.x[1]]

@@ -3,6 +3,8 @@ from typing import Optional
 import numpy as np
 from vicarutil.image import VicarImage
 
+from .fitting import to_zero_one
+
 
 class ImageWrapper(object):
     image_data: VicarImage
@@ -47,16 +49,13 @@ class ImageWrapper(object):
 
     def get_processed(self):
         border = self.border
-        img = self.get_image()
-        if self.invalid_indices is not None:
-            img = np.delete(img, self.invalid_indices, axis=0)
+        img = self.remove_invalid()
         if border != 0 and self.is_border_valid(border):
             img = img[border + 1:-1 * border, border + 1:-1 * border]
-        img[np.logical_not(np.isfinite(img))] = np.average(img[np.isfinite(img)])
         if self.active:
             img = img - self.bg
         if self.normalized:
-            img = (img - np.min(img)) * 1 / (np.max(img) - np.min(img))
+            img = to_zero_one(img)
         return img
 
     def get_image(self):
@@ -66,3 +65,15 @@ class ImageWrapper(object):
         return border > 0 \
                and border * 2 + 20 < len(self.get_image()) \
                and border * 2 + 20 < len(self.get_image()[0])
+
+    def remove_invalid(self) -> np.ndarray:
+        img = self.get_image().copy()
+        indices = list()
+        for _i, line in enumerate(img):
+            if np.alltrue(np.isclose(np.average(line), line)):
+                indices.append(_i)
+        if len(indices) != 0:
+            self.invalid_indices = np.asarray(indices)
+            return np.delete(img, indices, axis=0)
+        img[np.logical_not(np.isfinite(img))] = np.average(img[np.isfinite(img)])
+        return img

@@ -8,6 +8,10 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import PolynomialFeatures
 
 
+def to_zero_one(v: np.ndarray) -> np.ndarray:
+    return (v - np.min(v)) * 1 / (np.max(v) - np.min(v))
+
+
 def reg_to_eq(regressor) -> np.ndarray:
     return np.asarray([*regressor.coef_[::-1], regressor.intercept_])
 

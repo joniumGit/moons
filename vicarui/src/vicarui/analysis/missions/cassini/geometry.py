@@ -1,6 +1,14 @@
+from PySide2.QtCore import Qt
+from PySide2.QtWidgets import QHBoxLayout, QVBoxLayout, QSizePolicy, QTextEdit
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT
+from matplotlib.pyplot import Figure
+from mpl_toolkits.mplot3d import Axes3D
+
 from .config import *
+from .entity import PlotPacket
 from .helpers import ImageHelper
 from ...kernels import load_kernels_for_image, release_kernels
+from ....support import non_modal
 
 
 def view_geometry(*_, image: ImageWrapper = None, **config):
@@ -9,13 +17,6 @@ def view_geometry(*_, image: ImageWrapper = None, **config):
     """
     if image is not None:
         image: VicarImage = image.get_raw()
-        from PySide2.QtWidgets import QHBoxLayout, QVBoxLayout, QSizePolicy, QTextEdit
-        from PySide2.QtCore import Qt
-        from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT
-        from matplotlib.pyplot import Figure
-        from mpl_toolkits.mplot3d import Axes3D
-        from .entity import PlotPacket
-        from ....support import non_modal
 
         d = non_modal()
         d.setWindowState(Qt.WindowMaximized)

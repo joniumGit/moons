@@ -1,16 +1,16 @@
+from PySide2.QtCore import QSize
+from PySide2.QtWidgets import QTextEdit, QHBoxLayout, QVBoxLayout, QLabel
 from vicarutil.image import VicarImage
 
 from .config import ImageWrapper
 from .helpers import ImageHelper
+from ....support import non_modal
+from ....viewer.helper import CT
 
 
 def view_labels(*_, image: ImageWrapper = None, **__):
     if image:
         image: VicarImage = image.get_raw()
-        from PySide2.QtWidgets import QTextEdit, QHBoxLayout, QVBoxLayout, QLabel
-        from PySide2.QtCore import QSize
-        from ....viewer.helper import CT
-        from ....support import non_modal
 
         dia = non_modal()
         dia.setModal(False)

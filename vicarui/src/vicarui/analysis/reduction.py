@@ -8,19 +8,7 @@ from sklearn.preprocessing import PolynomialFeatures
 
 from .wrapper import ImageWrapper
 from ..support import info
-
-
-def remove_invalid(image: ImageWrapper) -> np.ndarray:
-    img = image.get_image().copy()
-    indices = list()
-    for _i, line in enumerate(img):
-        if np.alltrue(np.isclose(np.average(line), line)):
-            indices.append(_i)
-    if len(indices) != 0:
-        image.invalid_indices = np.asarray(indices)
-        return np.delete(img, indices, axis=0)
-    img[np.logical_not(np.isfinite(img))] = np.average(img[np.isfinite(img)])
-    return img
+from .fitting import to_zero_one
 
 
 def br_reduction(
@@ -62,9 +50,9 @@ def br_reduction(
 
     img: np.ndarray
     if image.is_border_valid(border):
-        img = remove_invalid(image)[border + 1:-1 * border, border + 1:-1 * border]
+        img = image.remove_invalid()[border + 1:-1 * border, border + 1:-1 * border]
     else:
-        img = remove_invalid(image)
+        img = image.remove_invalid()
     minus: Optional[np.ndarray] = None
     gen_bg: bool = True
 
@@ -121,7 +109,7 @@ def br_reduction(
 
     try:
         if normalize:
-            img = (img - np.min(img)) * 1 / (np.max(img) - np.min(img))
+            img = to_zero_one(img)
             image.normalized = True
         else:
             image.normalized = False
