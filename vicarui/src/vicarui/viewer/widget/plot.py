@@ -93,16 +93,16 @@ class PlotWidget(QWidget):
     def reload_image(self):
         if self.image:
             self.image_show_start.emit()
-            self.show_image(self.image)
+            self.show_image(self.image, reload=True)
 
-    def show_image(self, image: ImageWrapper):
+    def show_image(self, image: ImageWrapper, reload: bool = False):
         self.image = image
-        self.fig.clear()
         self.fig.show_image(
             image,
             self.adjustments.get_image_normalize(),
             self.adjustments.get_br_package(),
             self.adjustments.get_click_area(),
+            restore=reload,
             **(self.get_config() or dict())
         )
 

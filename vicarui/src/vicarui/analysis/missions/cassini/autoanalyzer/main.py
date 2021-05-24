@@ -39,13 +39,13 @@ def auto(*_, image: ImageWrapper = None, **config):
 
         fig = Figure()
         agg = FigureCanvasQTAgg(figure=fig)
-        ax: Axes = fig.add_subplot(2, 4, (1, 6))
+        ax: Axes = fig.add_subplot(2, 4, (1, 6), label="Image Display")
 
         plots: Dict[str, Axes] = {
-            INTEGRAL_TARGET: fig.add_subplot(247),
-            INTEGRAL_SHADOW: fig.add_subplot(248),
-            CONTRAST_TARGET: fig.add_subplot(243),
-            CONTRAST_SHADOW: fig.add_subplot(244)
+            INTEGRAL_TARGET: fig.add_subplot(247, label="Integral at Target"),
+            INTEGRAL_SHADOW: fig.add_subplot(248, label="Integral at Shadow"),
+            CONTRAST_TARGET: fig.add_subplot(243, label="Contrast at Target"),
+            CONTRAST_SHADOW: fig.add_subplot(244, label="Contrast at Shadow♥")
         }
 
         plots[INTEGRAL_TARGET].sharey(plots[INTEGRAL_SHADOW])
@@ -142,9 +142,11 @@ def auto(*_, image: ImageWrapper = None, **config):
         radius.setPlaceholderText("Shadow Radius")
 
         def make_visible(vertical: bool):
+            clim = ax.get_images()[0].get_clim()
             ax.clear()
             clear_subs()
             ax.imshow()
+            ax.get_images()[0].set_clim(clim)
             show(
                 helper.im_helper,
                 rect_intercept(helper(to_selection(vertical))),

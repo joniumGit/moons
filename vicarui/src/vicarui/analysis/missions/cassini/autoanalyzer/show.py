@@ -62,7 +62,7 @@ def show(
                         "FIT,"
                         + tget
                         + ","
-                        + type(pipe.reg.estimator_).__name__
+                        + pipe.name
                         + ","
                         + ",".join(
                             (f"{v:.4e}" for v in [*pipe.reg.estimator_.coef_, pipe.reg.estimator_.intercept_, mse]))
@@ -90,6 +90,5 @@ def show(
 
 
 __all__ = [
-    'to_zero_one',
     'show'
 ]

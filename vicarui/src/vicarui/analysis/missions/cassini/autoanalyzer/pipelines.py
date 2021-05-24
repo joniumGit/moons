@@ -32,6 +32,7 @@ def get_pipes(fits: List[Fit]):
 
     return [
         Pipe(
+            name="reciprocal",
             color="blue",
             style="-",
             title=r"$\frac{k}{x} + b$""\n",
@@ -40,6 +41,7 @@ def get_pipes(fits: List[Fit]):
             eq_producer=to_eq
         ),
         Pipe(
+            name="log1p",
             color="magenta",
             style="-",
             title=r"$\log y = a\log x + b$""\n",

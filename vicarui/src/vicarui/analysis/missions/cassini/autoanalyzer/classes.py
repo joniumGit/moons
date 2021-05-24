@@ -54,6 +54,7 @@ class Pipe:
     pipe_producer: Callable[[T], Pipeline]
     color: str
     style: str
+    name: str
     title: str = ""
     log: bool = False
 
@@ -98,7 +99,7 @@ class AutoFit:
 class FitHelper:
 
     def __init__(self, image: ImageWrapper, helper: ImageHelper):
-        self.data = image.get_processed()
+        self.data = image.processed
         self.packet = DataPacket(self.data)
         self.autofit = AutoFit(self.packet)
         self.shadow = norm(Transformer(SATURN_FRAME, helper.frame, helper.time_et)(

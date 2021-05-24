@@ -1,4 +1,5 @@
-from typing import Optional
+from functools import cached_property
+from typing import Optional, Tuple
 
 import numpy as np
 from vicarutil.image import VicarImage
@@ -7,67 +8,43 @@ from .fitting import to_zero_one
 
 
 class ImageWrapper(object):
-    image_data: VicarImage
-    bg: Optional[np.ndarray]
-    bg_outliers: Optional[np.ndarray]
-
-    bg_degree: Optional[int]
-    normalized: Optional[bool]
-    mse: Optional[float]
+    _raw: VicarImage
 
     invalid_indices: Optional[np.ndarray]
-
     border: int
     active: bool
 
+    _bg: Optional[np.ndarray]
+    _bg_degree: Optional[int]
+    _bg_outliers: Optional[np.ndarray]
+    _normalized: Optional[bool]
+    _mse: Optional[float]
+
     def __init__(self, image: VicarImage):
         super(ImageWrapper, self).__init__()
-        self.image_data = image
+        self._raw = image
 
-        self.bg = None
-        self.bg_degree = None
-        self.bg_outliers = None
-        self.mse = None
+        self._bg = None
+        self._mse = None
+        self._bg_degree = None
+        self._bg_outliers = None
+
         self.invalid_indices = None
-
         self.active = False
         self.normalized = False
         self.border = 0
 
-    def add_bg(
-            self,
-            degree: int,
-            bg: np.ndarray,
-            mse: float
-    ):
-        self.bg_degree = degree
-        self.bg = bg
-        self.mse = mse
+    @property
+    def raw(self):
+        return self._raw
 
-    def get_raw(self):
-        return self.image_data
+    @property
+    def original(self):
+        return self.raw.data[0]
 
-    def get_processed(self):
-        border = self.border
-        img = self.remove_invalid()
-        if border != 0 and self.is_border_valid(border):
-            img = img[border + 1:-1 * border, border + 1:-1 * border]
-        if self.active:
-            img = img - self.bg
-        if self.normalized:
-            img = to_zero_one(img)
-        return img
-
-    def get_image(self):
-        return self.image_data.data[0]
-
-    def is_border_valid(self, border: int):
-        return border > 0 \
-               and border * 2 + 20 < len(self.get_image()) \
-               and border * 2 + 20 < len(self.get_image()[0])
-
-    def remove_invalid(self) -> np.ndarray:
-        img = self.get_image().copy()
+    @cached_property
+    def sanitized(self) -> np.ndarray:
+        img = self.original.copy()
         indices = list()
         for _i, line in enumerate(img):
             if np.alltrue(np.isclose(np.average(line), line)):
@@ -77,3 +54,77 @@ class ImageWrapper(object):
             return np.delete(img, indices, axis=0)
         img[np.logical_not(np.isfinite(img))] = np.average(img[np.isfinite(img)])
         return img
+
+    def is_border_valid(self, border: int):
+        shape = self.sanitized.shape
+        return (
+                border > 0
+                and border * 2 + 20 < shape[0]
+                and border * 2 + 20 < shape[1]
+        )
+
+    @property
+    def shape(self) -> Tuple[int, int]:
+        border = self.border
+        shape = self.sanitized.shape
+        if border != 0 and self.is_border_valid(border):
+            return shape[0] - 2 * border, shape[1] - 2 * border
+        else:
+            return shape
+
+    @property
+    def processed(self):
+        border = self.border
+        img = self.sanitized
+        if border != 0 and self.is_border_valid(border):
+            img = img[border + 1:-1 * border, border + 1:-1 * border]
+        if self.active:
+            img = img - self.background
+        if self.normalized:
+            img = to_zero_one(img)
+        return img
+
+    @property
+    def has_background(self):
+        return self._bg is not None
+
+    @property
+    def background(self) -> np.ndarray:
+        if self.active:
+            return self._bg
+        else:
+            return np.zeros(self.shape)
+
+    @background.setter
+    def background(self, bg: np.ndarray):
+        self._bg = bg
+
+    @property
+    def degree(self):
+        return self._bg_degree or -1
+
+    @degree.setter
+    def degree(self, deg: int):
+        self._bg_degree = deg
+
+    @property
+    def mse(self) -> float:
+        if self.active:
+            return self._mse
+        else:
+            return -1.0
+
+    @mse.setter
+    def mse(self, mse: float):
+        self._mse = mse
+
+    @property
+    def outliers(self) -> np.ndarray:
+        if self.active:
+            return self._bg_outliers
+        else:
+            return np.zeros(self.shape)
+
+    @outliers.setter
+    def outliers(self, outliers: np.ndarray):
+        self._bg_outliers = outliers

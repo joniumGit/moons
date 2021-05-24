@@ -1,4 +1,4 @@
-from typing import Tuple, Optional
+from typing import NoReturn
 
 import numpy as np
 from sklearn.linear_model import RANSACRegressor, LinearRegression
@@ -8,68 +8,51 @@ from sklearn.preprocessing import PolynomialFeatures
 
 from .wrapper import ImageWrapper
 from ..support import info
-from .fitting import to_zero_one
 
 
 def br_reduction(
         image: ImageWrapper,
-        reduce: bool = True,
-        normalize: bool = True,
         degree: int = 3,
-        border: int = 2,
-) -> Tuple[np.ndarray, np.ndarray, float]:
+) -> NoReturn:
     """
     Polynomial background reduction and image normalization
 
     Fits once for both axes in image and combines the result.
 
-    If normalization is selected reduction result is normalized to [0, 1]
+    Stores everything in the image wrapper
 
     Parameters
     ----------
     image:      ImageWrapper
                 Image instance
 
-    reduce:     bool
-                Whether to do background reduction
-
-    normalize:  bool
-                Whether to normalize image data
-
     degree:     int
                 Polynomial fit degree
 
-    border:     int
-                Amount of pixels to exclude from all sides
-
     Returns
     -------
-    data:       tuple
-                (Normalized image data with reduced background, Reduction data, MSE for reduction)
+    NoReturn
     """
 
     img: np.ndarray
+    border = image.border
     if image.is_border_valid(border):
-        img = image.remove_invalid()[border + 1:-1 * border, border + 1:-1 * border]
+        img = image.sanitized[border + 1:-1 * border, border + 1:-1 * border]
     else:
-        img = image.remove_invalid()
-    minus: Optional[np.ndarray] = None
+        img = image.sanitized
     gen_bg: bool = True
 
-    mse = 0.0
-    if image.bg is not None:
-        minus = image.bg
+    if image.has_background:
+        minus = image.background
         gen_bg = not (
                 img.shape == minus.shape
-                and image.bg_degree == degree
-                and normalize == image.normalized
+                and image.degree == degree
         )
-        mse = image.mse or 0.0
 
     image.border = border
 
     try:
-        if reduce and gen_bg:
+        if gen_bg:
             reg = RANSACRegressor(
                 max_trials=100,
                 min_samples=int(np.sqrt(img.shape[0] * img.shape[1])),
@@ -80,6 +63,7 @@ def br_reduction(
                 PolynomialFeatures(degree=degree, include_bias=False),
                 reg
             )
+
             indexes = list()
             for i in range(0, len(img)):
                 for j in range(0, len(img[0])):
@@ -87,42 +71,18 @@ def br_reduction(
             indexes = np.asarray(indexes)
             pipe.fit(indexes, img.ravel())
             pred = pipe.predict(indexes)
-            mse = mean_squared_error(
-                img.ravel(),
-                pred
-            )
+            mse = mean_squared_error(img.ravel(), pred)
             minus = pred.reshape(img.shape)
-            image.add_bg(degree, minus, mse)
-            imask = reg.inlier_mask_.reshape(img.shape)
-            image.bg_outliers = np.ma.masked_where(imask, imask)
+            inlier_mask = reg.inlier_mask_.reshape(img.shape)
+
+            image.background = minus
+            image.degree = degree
+            image.mse = mse
+            image.outliers = np.ma.masked_where(inlier_mask, inlier_mask)
+
             info(f"Background mse: {mse:.5e}")
-        if reduce and minus is not None:
-            img = img - minus
-        else:
-            minus = np.zeros(img.shape)
-            mse = 0.0
     except Exception as e:
         from ..support import handle_exception
         handle_exception(e)
-        mse = 0.0
-        minus = np.zeros(img.shape)
-
-    try:
-        if normalize:
-            img = to_zero_one(img)
-            image.normalized = True
-        else:
-            image.normalized = False
-
-        if reduce:
-            image.active = True
-        else:
-            image.active = False
-    except Exception as e:
-        from ..support import handle_exception
-        handle_exception(e)
-        mse = 0.0
-        minus = np.zeros(img.shape)
         image.active = False
-
-    return img, minus, mse
+        image.normalized = False
