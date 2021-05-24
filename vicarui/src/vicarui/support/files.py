@@ -89,7 +89,6 @@ class FileTask(QThread):
             if self.base.is_dir():
                 dirs = self.scan_dirs(self.base)
                 self.set_count.emit(len(dirs))
-                cnt = 1
                 out = dict()
 
                 from os import walk

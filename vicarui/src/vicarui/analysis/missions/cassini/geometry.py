@@ -16,7 +16,7 @@ def view_geometry(*_, image: ImageWrapper = None, **config):
     Geometry viewer
     """
     if image is not None:
-        image: VicarImage = image.get_raw()
+        image: VicarImage = image.raw
 
         d = non_modal()
         d.setWindowState(Qt.WindowMaximized)

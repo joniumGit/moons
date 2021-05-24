@@ -10,7 +10,7 @@ from ....viewer.helper import CT
 
 def view_labels(*_, image: ImageWrapper = None, **__):
     if image:
-        image: VicarImage = image.get_raw()
+        image: VicarImage = image.raw
 
         dia = non_modal()
         dia.setModal(False)

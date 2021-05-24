@@ -17,7 +17,7 @@ class SimpleSignal:
 
 
 class TypedSignal(Generic[_T]):
-    def __init__(self, t: Type[_T]):
+    def __init__(self, _: Type[_T]):
         pass
 
     def emit(self, o: _T):

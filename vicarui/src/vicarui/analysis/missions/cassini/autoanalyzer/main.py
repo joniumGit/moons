@@ -26,8 +26,8 @@ def auto(*_, image: ImageWrapper = None, **config):
         return
 
     try:
-        load_kernels_for_image(image.get_raw())
-        helper = FitHelper(image, ImageHelper(image.get_raw(), **config))
+        load_kernels_for_image(image.raw)
+        helper = FitHelper(image, ImageHelper(image.raw, **config))
 
         d = modal()
         d.setWindowTitle("Autofit")

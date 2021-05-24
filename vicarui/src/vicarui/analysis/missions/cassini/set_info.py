@@ -11,7 +11,7 @@ def set_info(
         analysis_axis=None,
         **config
 ):
-    raw = image.get_raw()
+    raw = image.raw
     try:
         load_kernels_for_image(raw)
 

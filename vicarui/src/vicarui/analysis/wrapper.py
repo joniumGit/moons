@@ -35,11 +35,11 @@ class ImageWrapper(object):
         self.border = 0
 
     @property
-    def raw(self):
+    def raw(self) -> VicarImage:
         return self._raw
 
     @property
-    def original(self):
+    def original(self) -> np.ndarray:
         return self.raw.data[0]
 
     @cached_property
@@ -55,7 +55,7 @@ class ImageWrapper(object):
         img[np.logical_not(np.isfinite(img))] = np.average(img[np.isfinite(img)])
         return img
 
-    def is_border_valid(self, border: int):
+    def is_border_valid(self, border: int) -> bool:
         shape = self.sanitized.shape
         return (
                 border > 0
@@ -73,7 +73,7 @@ class ImageWrapper(object):
             return shape
 
     @property
-    def processed(self):
+    def processed(self) -> np.ndarray:
         border = self.border
         img = self.sanitized
         if border != 0 and self.is_border_valid(border):
@@ -85,7 +85,7 @@ class ImageWrapper(object):
         return img
 
     @property
-    def has_background(self):
+    def has_background(self) -> bool:
         return self._bg is not None
 
     @property
@@ -100,7 +100,7 @@ class ImageWrapper(object):
         self._bg = bg
 
     @property
-    def degree(self):
+    def degree(self) -> int:
         return self._bg_degree or -1
 
     @degree.setter
