@@ -1,3 +1,5 @@
-from ..support.logging import _logger as parent_logger
+from ..support.logging import child
 
-log = parent_logger.getChild("analysis")
+log = child("analysis")
+
+__all__ = ['log']

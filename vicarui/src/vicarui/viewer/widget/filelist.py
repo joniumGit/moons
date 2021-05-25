@@ -5,7 +5,7 @@ from PySide2 import QtWidgets as qt
 from PySide2.QtGui import QStandardItem, QStandardItemModel, QMouseEvent
 
 from ..helper import C
-from ...support import debug, invoke_safe, handle_exception
+from ...support import debug, invoke_safe, handle_exception, typedsignal, SimpleSignal
 
 _T = TypeVar('_T')
 
@@ -78,8 +78,6 @@ class Spacer(qt.QSpacerItem):
 
 
 class Button(qt.QPushButton):
-    from ...support.signals import SimpleSignal
-
     clicked: SimpleSignal
 
     def __init__(self, text: str):
@@ -99,8 +97,6 @@ class Label(qt.QLabel):
 
 
 class FileListWidget(qt.QWidget):
-    from ...support.signals import typedsignal
-
     show_image = typedsignal(Path)
     show_multiple = typedsignal(list)
 

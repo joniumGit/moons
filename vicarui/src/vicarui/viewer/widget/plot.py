@@ -11,7 +11,7 @@ from .adjustment import AdjustmentWidget
 from .configbtn import ConfigBtn
 from ..helper import FigureWrapper, E
 from ...analysis import ImageWrapper
-from ...support import p_bar
+from ...support import Progress
 
 
 class ReadTask(QThread):
@@ -60,7 +60,7 @@ class PlotWidget(QWidget):
         sub = QHBoxLayout()
         sub.addWidget(self.tools)
         sub.addStretch()
-        self.progress = p_bar()
+        self.progress = Progress.bar()
         self.progress.setFixedWidth(250)
         sub.addWidget(self.progress, alignment=E)
 

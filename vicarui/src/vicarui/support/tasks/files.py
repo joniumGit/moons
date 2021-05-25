@@ -1,15 +1,22 @@
+from enum import Enum
+from os import walk
 from pathlib import Path
+from time import time
 from typing import Dict, List, Iterable, TypeVar, Tuple, Callable
 
 import numpy as np
 from PySide2.QtCore import QThread
 
-from .filetype import FileType
-from .logging import (
-    handle_exception
-)
+from ..concurrent import typedsignal, signal
+from ..logging import handle_exception
+from ..progress import Progress
 
 _T = TypeVar('_T')
+
+
+class FileType(Enum):
+    IMAGE = "IMG"
+    LABEL = "LBL"
 
 
 def _safe_file_iter(o: Iterable[_T]) -> Iterable[_T]:
@@ -27,7 +34,6 @@ def sequence_from_image(p: Path):
 
 
 class FileTask(QThread):
-    from .signals import typedsignal, signal
     started = signal()
     set_count = typedsignal(int)
     update_count = typedsignal(int)
@@ -35,7 +41,7 @@ class FileTask(QThread):
 
     def __init__(self, base_path: str, done_callback: Callable[[dict], None]):
         super(FileTask, self).__init__()
-        from .progress import start_progress, p_bar, stop_progress
+
         self.base = Path(base_path)
         self._start = 0
 
@@ -44,12 +50,12 @@ class FileTask(QThread):
         def done(d: Dict):
             done_callback(d)
             _quit()
-            stop_progress()
+            Progress.stop()
 
-        self.started.connect(start_progress)
+        self.started.connect(Progress.start())
         self.finished.connect(done)
-        self.set_count.connect(lambda i: p_bar().setMaximum(i))
-        self.update_count.connect(lambda i: p_bar().setValue(i))
+        self.set_count.connect(lambda i: Progress.max(i))
+        self.update_count.connect(lambda i: Progress.value(i))
 
     def abort(self):
         self.finished.emit(dict())
@@ -83,16 +89,13 @@ class FileTask(QThread):
 
     def run(self) -> None:
         try:
-            from time import time
+
             self._start = time()
             self.started.emit()
             if self.base.is_dir():
                 dirs = self.scan_dirs(self.base)
                 self.set_count.emit(len(dirs))
                 out = dict()
-
-                from os import walk
-
                 total: int = np.sum([len(files) for _, _, files in walk(self.base, followlinks=False)])
                 self.set_count.emit(total)
                 cnt = 0
@@ -118,3 +121,6 @@ class FileTask(QThread):
         except TimeoutError:
             self.finished.emit(dict())
             self.quit()
+
+
+__all__ = ['FileTask', 'FileType']

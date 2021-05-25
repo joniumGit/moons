@@ -56,6 +56,7 @@ def get_config() -> Optional[Dict[str, Tuple[Union[str, float, int], Union[str, 
     m = anal_module()
     try:
         if m:
+            # noinspection PyUnresolvedReferences
             return m.get_config()
     except AttributeError:
         pass
@@ -75,6 +76,7 @@ def set_info(
     m = anal_module()
     try:
         if m:
+            # noinspection PyUnresolvedReferences
             return m.set_info(
                 image,
                 image_axis=image_axis,
@@ -94,6 +96,7 @@ def get_additional_functions() -> Optional[Dict[str, str]]:
     m = anal_module()
     try:
         if m:
+            # noinspection PyUnresolvedReferences
             return m.get_additional_functions()
     except AttributeError:
         pass

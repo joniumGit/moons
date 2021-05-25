@@ -5,7 +5,7 @@ from matplotlib.axes import Axes
 from matplotlib.backend_bases import MouseEvent, MouseButton
 
 from ...analysis import DataPacket
-from ...support import logging as log
+from ...support import log
 
 
 class VicarEvent:
@@ -19,11 +19,10 @@ class VicarEvent:
         self.data = data
         self.area = area
 
-        from ...support import AxesWrapper
-        from typing import cast
+        from ...support import wrap_axes
 
-        self.data_axis = cast(AxesWrapper, data_axis)
-        self.line_axis = cast(AxesWrapper, line_axis)
+        self.data_axis = wrap_axes(data_axis)
+        self.line_axis = wrap_axes(line_axis)
 
         self.cid = data_axis.figure.canvas.mpl_connect('button_press_event', self)
         self.dpkt = DataPacket(data)

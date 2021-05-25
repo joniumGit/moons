@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, cast
 
 from matplotlib.axes import Axes
 
@@ -82,3 +82,10 @@ def append_to_axes():
     Axes.legend = legend
     Axes.refresh = refresh
     Axes.clear_lines = clear_lines
+
+
+def wrap_axes(ax: Axes) -> AxesWrapper:
+    return cast(AxesWrapper, ax)
+
+
+__all__ = ['append_to_axes', 'MPL_FONT_CONFIG', 'wrap_axes']
