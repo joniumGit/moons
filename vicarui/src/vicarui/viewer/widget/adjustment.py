@@ -89,6 +89,7 @@ class AdjustmentWidget(qt.QWidget):
 
         reload_btn = qt.QPushButton(text="Reload")
         self.reload_btn = reload_btn
+
         layout.addWidget(reload_btn, alignment=NW)
         self.setLayout(layout)
 

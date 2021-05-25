@@ -5,7 +5,7 @@ from PySide2 import QtWidgets as qt
 from PySide2.QtGui import QStandardItem, QStandardItemModel, QMouseEvent
 
 from ..helper import C
-from ...support import debug, invoke_safe, handle_exception, typedsignal, SimpleSignal
+from ...support import debug, invoke_safe, handle_exception, typedsignal, SimpleSignal, FileTask, Tasker, Busy
 
 _T = TypeVar('_T')
 
@@ -101,11 +101,11 @@ class FileListWidget(qt.QWidget):
     show_multiple = typedsignal(list)
 
     model: FileModel
-    _task = None
     _busy = False
 
     def __init__(self, *args, **kwargs):
         super(FileListWidget, self).__init__(*args, **kwargs)
+
         layout = qt.QVBoxLayout()
         layout.setSpacing(2)
 
@@ -139,33 +139,33 @@ class FileListWidget(qt.QWidget):
         self.model = QStandardItemModel()
         self.model.invisibleRootItem()
 
-    @property
-    def busy(self):
-        return self._busy
+        Busy.listen(self, self.set_busy)
 
-    @busy.setter
-    def busy(self, busy: bool):
+    def set_busy(self, busy: bool):
         if busy:
             self._busy = True
             self.show_btn.setEnabled(False)
+            self.load_btn.setEnabled(False)
         else:
             self._busy = False
             self.show_btn.setEnabled(True)
+            self.load_btn.setEnabled(True)
 
     @invoke_safe
     def show_file(self):
         try:
-            if len(self.item_view.selectedIndexes()) > 1:
-                selected: List[Path] = [
-                    self.model.itemFromIndex(i).get_path() for i in self.item_view.selectedIndexes()
-                ]
-                debug("Selected %d files", len(selected))
-                self.show_multiple.emit(selected)
-            elif len(self.item_view.selectedIndexes()) == 1:
-                selected_img: PathItem = self.model.itemFromIndex(self.item_view.selectedIndexes()[0])
-                if selected_img is not None:
-                    debug("Image selected: %s", str(selected_img.get_path()))
-                    self.show_image.emit(selected_img.get_path())
+            if not self._busy:
+                if len(self.item_view.selectedIndexes()) > 1:
+                    selected: List[Path] = [
+                        self.model.itemFromIndex(i).get_path() for i in self.item_view.selectedIndexes()
+                    ]
+                    debug("Selected %d files", len(selected))
+                    self.show_multiple.emit(selected)
+                elif len(self.item_view.selectedIndexes()) == 1:
+                    selected_img: PathItem = self.model.itemFromIndex(self.item_view.selectedIndexes()[0])
+                    if selected_img is not None:
+                        debug("Image selected: %s", str(selected_img.get_path()))
+                        self.show_image.emit(selected_img.get_path())
         except IndexError:
             pass
 
@@ -176,21 +176,18 @@ class FileListWidget(qt.QWidget):
 
     @invoke_safe
     def files_callback(self, files: Dict[str, List[Path]]):
-        self._task = None
         self.model = FileModel(**files)
         self.item_view.setModel(self.model)
-        self.load_btn.setEnabled(True)
+        Busy.clear()
 
     @invoke_safe
     def pick_dir(self) -> None:
         debug("Picking files")
         selected = ImageChooser.getExistingDirectory(caption="Select image directory")
         if selected is not None and selected != "":
-            self.load_btn.setEnabled(False)
+            Busy.set_busy()
             debug("Picked dir %s", str(selected))
-            from ...support import FileTask
-            self._task = FileTask(selected, self.files_callback)
-            self._task.start()
+            Tasker.run(FileTask(selected, self.files_callback))
 
     @invoke_safe
     def show_on_dbl(self, event: QMouseEvent) -> None:

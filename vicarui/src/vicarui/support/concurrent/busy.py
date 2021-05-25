@@ -1,43 +1,50 @@
-from typing import NoReturn, Callable, List
-from weakref import ref
+from typing import NoReturn, Callable, List, Any, MutableMapping
+from weakref import WeakKeyDictionary
 
 from .lock import Lock
 
 LISTENER_TYPE = Callable[[bool], NoReturn]
-_listeners: List[ref[LISTENER_TYPE]] = list()
+_listeners: MutableMapping[Any, List[LISTENER_TYPE]] = WeakKeyDictionary()
 _lock = Lock()
 
 
 def _retrieve_listeners() -> List[LISTENER_TYPE]:
-    to_fire = list()
-    to_remove = list()
-    for idx, weak in enumerate(_listeners):
-        listener = weak()
-        if listener is not None:
-            to_fire.append(listener)
-        else:
-            to_remove.append(idx)
-    for idx in reversed(to_remove):
-        _listeners.pop(idx)
-    return to_fire
+    return [listener for ll in _listeners.values() for listener in ll]
+
+
+def _append(referent: Any, listener: LISTENER_TYPE) -> NoReturn:
+    if referent in _listeners:
+        _listeners[referent].append(listener)
+    else:
+        _listeners[referent] = [listener]
 
 
 class Busy:
 
     @staticmethod
-    def listen(on_state_change: LISTENER_TYPE) -> NoReturn:
+    def listen(referent: Any, on_state_change: LISTENER_TYPE) -> NoReturn:
         """
         Adds a listener for busy state
         """
-        _lock.run_blocking(lambda: _listeners.append(ref(on_state_change)))
+        _lock.run_blocking(lambda: _append(referent, on_state_change))
 
     @staticmethod
     def set(busy: bool):
         to_fire = _lock.run_blocking(_retrieve_listeners)
         if busy:
-            map(lambda f: f(True), to_fire)
+            for f in to_fire:
+                f(True)
         else:
-            map(lambda f: f(False), to_fire)
+            for f in to_fire:
+                f(False)
+
+    @staticmethod
+    def set_busy():
+        Busy.set(True)
+
+    @staticmethod
+    def clear():
+        Busy.set(False)
 
 
 __all__ = ['Busy']

@@ -3,6 +3,7 @@ from typing import Callable, Dict
 from PySide2 import QtWidgets as qt
 
 from ...analysis import get_additional_functions
+from ...support import Busy
 
 
 def call_additional(name: str, provider: Callable[[], Dict]):
@@ -18,6 +19,7 @@ class AdditionalBtn(qt.QPushButton):
 
     def __init__(self, arguments_provider: Callable[[], Dict]):
         super(AdditionalBtn, self).__init__(text="...")
+        Busy.listen(self, lambda busy: self.setEnabled(not busy))
         additional = get_additional_functions()
         if additional:
             d = qt.QDialog()

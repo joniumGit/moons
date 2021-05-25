@@ -20,3 +20,6 @@ class ReadTask(QThread):
         wrapper = ImageWrapper(image)
         self.done.emit(wrapper)
         self.quit()
+
+
+__all__ = ['ReadTask']

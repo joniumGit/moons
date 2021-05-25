@@ -25,7 +25,7 @@ class Lock:
             finally:
                 self._lock.release()
         else:
-            warn("Failed to append listener")
+            warn("Failed to run listener")
 
 
 __all__ = ['Lock']

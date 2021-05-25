@@ -49,8 +49,8 @@ class FileTask(QThread):
 
         def done(d: Dict):
             done_callback(d)
-            _quit()
             Progress.stop()
+            _quit()
 
         self.started.connect(Progress.start())
         self.finished.connect(done)

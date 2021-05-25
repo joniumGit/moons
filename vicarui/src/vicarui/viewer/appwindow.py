@@ -17,10 +17,6 @@ class AppWindow(qt.QWidget):
         flw.show_image.connect(plw.open_image)
         flw.show_multiple.connect(lambda f: plw.show_image(stack(flw, f)))
 
-        from functools import partial
-        plw.image_show_start.connect(partial(setattr, flw, 'busy', True))
-        plw.image_show_end.connect(partial(setattr, flw, 'busy', False))
-
         layout = qt.QHBoxLayout()
         layout.addWidget(flw)
         layout.addWidget(plw, stretch=90)
