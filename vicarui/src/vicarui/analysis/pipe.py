@@ -77,8 +77,8 @@ class Pipe:
         eq = self.eq
         out = ' '.join(reversed([
             sci_4(coef, plus_sign=True)
-            + (fr" \cdot x^{idx} " if idx != 0 else r"\cdot x ")
-            for idx, coef in enumerate(reversed(eq[:-1]))
+            + (fr" \cdot x^{idx} " if idx != 1 else r"\cdot x ")
+            for idx, coef in enumerate(reversed(eq[:-1]), start=1)
         ]))
         out += f' {sci_4(eq[-1], plus_sign=True)}'
         return out
