@@ -7,7 +7,6 @@ from sklearn.compose import TransformedTargetRegressor
 from sklearn.linear_model import RANSACRegressor
 from sklearn.linear_model._base import LinearModel
 from sklearn.pipeline import make_pipeline, Pipeline
-from sklearn.preprocessing import RobustScaler
 
 from .tex import sci_4
 
@@ -30,31 +29,23 @@ class Pipe:
         if hasattr(self, 'pipe_'):
             return self.pipe_
         else:
-            self.scale_ = RobustScaler()
             self.pipe_ = make_pipeline(
                 *self.transforms,
-                self.scale_,
                 self.reg
             )
             return self.pipe_
 
     @property
     def eq(self) -> np.ndarray:
-        if hasattr(self, 'scale_'):
-            reg: Union[RANSACRegressor, LinearModel, TransformedTargetRegressor]
-            reg = self.reg
-            while isinstance(reg, RANSACRegressor) or isinstance(reg, TransformedTargetRegressor):
-                # noinspection PyUnresolvedReferences
-                try:
-                    reg = reg.regressor_
-                except AttributeError:
-                    reg = reg.estimator_
-            scale: RobustScaler = self.scale_
-            coef_ = np.true_divide(reg.coef_, ine(scale.scale_, 1))
-            icept_ = reg.intercept_ - np.dot(coef_, scale.center_) if scale.center_ is not None else 0
-            return np.asarray([*coef_[::-1], icept_])
-        else:
-            raise ValueError("Not fitted")
+        reg: Union[RANSACRegressor, LinearModel, TransformedTargetRegressor]
+        reg = self.reg
+        while isinstance(reg, RANSACRegressor) or isinstance(reg, TransformedTargetRegressor):
+            # noinspection PyUnresolvedReferences
+            try:
+                reg = reg.regressor_
+            except AttributeError:
+                reg = reg.estimator_
+        return np.asarray([*reg.coef_[::-1], reg.intercept_])
 
     @property
     def kab_str(self) -> str:
