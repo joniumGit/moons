@@ -26,15 +26,19 @@ The UI should be quite self-explanatory for the features which include:
 
 ### Background reduction
 
-Background reduction is done with __LinearRegression__ models from __Scikit-learn__. The fitted polynomial degree is
+![](/.github/images/bg_plot.png)
+
+Background reduction is done with __RANSACRegressor__ model from __Scikit-learn__. The fitted polynomial degree is
 user configurable from the ui, and it is implemented in the learning models with __PolynomialFeatures__. It would be
-possible to use models explained in [Robust fitting by Scikit](
+possible to use other models explained in [Robust fitting by Scikit](
 https://scikit-learn.org/stable/auto_examples/linear_model/plot_robust_fit.html
-), but they did not significantly improve the outcome.
+), but they did not significantly improve the outcome. Outliers are displayed on the generated background.
 
 ### Inspection
 
 ![](/.github/images/fit.png)
+
+![](/.github/images/fit_plot.png)
 
 The area inspection view is an average of the first dimension selected in the viewers upper corner
 ``width``, the ``window`` controls selection width.

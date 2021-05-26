@@ -1,4 +1,4 @@
-# Ring moons of Saturn
+# Moons: An Analysis Module for Vicar Files
 
 ![](.github/images/sample.png)
 
@@ -30,7 +30,7 @@ Easiest to install with ``pip install -e vicarutil`` and ``pip install -e vicaru
 
 [PyCharm](https://www.jetbrains.com/pycharm/) is highly recommended if you want need to make any changes.
 
-## Some features:
+## Screenshots:
 
 #### Geometry viewer
 
@@ -39,6 +39,10 @@ Easiest to install with ``pip install -e vicarutil`` and ``pip install -e vicaru
 #### Inspection
 
 ![](.github/images/fit.png)
+
+#### Labels
+
+![](.github/images/label_window.png)
 
 #### Autofit (in development)
 

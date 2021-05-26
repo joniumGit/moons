@@ -6,6 +6,7 @@ from PySide2.QtGui import QIntValidator
 from astropy.visualization import ImageNormalize, ZScaleInterval, HistEqStretch
 
 from ..helper import NW, CL
+from ...support import Busy
 
 
 class AdjustmentWidget(qt.QWidget):
@@ -89,6 +90,7 @@ class AdjustmentWidget(qt.QWidget):
 
         reload_btn = qt.QPushButton(text="Reload")
         self.reload_btn = reload_btn
+        Busy.listen(self, lambda busy: self.reload_btn.setEnabled(not busy))
 
         layout.addWidget(reload_btn, alignment=NW)
         self.setLayout(layout)

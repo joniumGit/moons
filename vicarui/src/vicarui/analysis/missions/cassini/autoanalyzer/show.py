@@ -32,7 +32,6 @@ def show(
     ]
 
     contrast, integral = (np.asarray([fit[i] for fit in fits]) for i in (0, 1))
-    # contrast, integral = (to_zero_one(v) for v in (contrast, integral))
 
     names = [CONTRAST_TARGET, INTEGRAL_TARGET, CONTRAST_SHADOW, INTEGRAL_SHADOW]
     from warnings import catch_warnings, filterwarnings
@@ -43,21 +42,17 @@ def show(
 
                 data_ = contrast if 'c' in tget else integral
                 dist_ = dists[0] if 'tg' in tget else dists[1]
-                x_ = np.linspace(np.min(dist_), np.max(dist_), num=256)
+                x_ = np.linspace(np.min(dist_), np.max(dist_), num=256)[..., None]
 
                 ax: Axes = plots[tget]
                 ax.scatter(dist_, data_, c="gray", s=4, alpha=0.65)
 
                 try:
-                    if not pipe.log:
-                        pipe.line.fit(dist_[..., None], data_)
-                        y = pipe.line.predict(x_[..., None])
-                        mse = mean_squared_error(data_, pipe.line.predict(dist_[..., None]))
-                    else:
-                        pipe.line.fit(dist_[..., None], np.log1p(data_))
-                        y = pipe.line.predict(x_[..., None])
-                        y = np.expm1(y)
-                        mse = mean_squared_error(np.log1p(data_), pipe.line.predict(dist_[..., None]))
+                    dist_ = dist_[..., None]
+                    pipe.line.fit(dist_, data_)
+                    y = pipe.line.predict(x_)
+                    pred = pipe.line.predict(dist_)
+                    mse = mean_squared_error(data_, pred)
                     log.info(
                         "FIT,"
                         + tget
@@ -65,13 +60,13 @@ def show(
                         + pipe.name
                         + ","
                         + ",".join(
-                            (f"{v:.4e}" for v in [*pipe.reg.estimator_.coef_, pipe.reg.estimator_.intercept_, mse]))
+                            (f"{v:.4e}" for v in [*pipe.eq, mse]))
                     )
                     ax.plot(
-                        x_, y,
+                        x_[:, 0], y,
                         color=pipe.color,
                         linestyle=pipe.style,
-                        label=fr"{pipe.title}$\, mse: {sci_4(mse)} \, {pipe.eq}$"
+                        label=fr"{pipe.title}$\, mse: {sci_4(mse)} \, {pipe.kab_str}$"
                     )
                     ax.legend()
                 except ValueError:

@@ -72,6 +72,7 @@ class PlotPacket:
     def plot_camera(self, closeup: bool = True):
         bore, bounds, up = get_camera_intersects(self.helper)
         cas = scale_to_rs(self.helper.pos_in_sat(CASSINI_ID, SATURN_ID))
+        target = scale_to_rs(self.helper.pos_in_sat(self.helper.target_id(), SATURN_ID))
         self.ax.scatter(cas[0], cas[1], cas[2], c=CASSINI_COLOR, zorder=10)
         self.ax.plot([cas[0], cas[0]], [cas[1], cas[1]], [0, cas[2]], c=CASSINI_COLOR, zorder=10)
         self.ax.plot(*np.column_stack((cas, bore)), color=CAMERA_COLOR, zorder=100)
@@ -94,8 +95,10 @@ class PlotPacket:
         else:
             max_lim = np.amax([self.ax.get_xlim3d(), self.ax.get_ylim3d(), self.ax.get_zlim3d()], axis=0)
             diff = max_lim[1] - max_lim[0]
+            i = 0
             for f in [self.ax.set_xlim3d, self.ax.set_ylim3d, self.ax.set_zlim3d]:
-                f((-diff, diff))
+                f((target[i] - diff, target[i] + diff))
+                i += 1
 
     def label(self):
         self.ax.set_xlabel(r"X ($R_s$)")

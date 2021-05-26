@@ -5,7 +5,7 @@ from PySide2.QtCore import QThread
 from vicarutil.image import read_image
 
 from ..concurrent import typedsignal
-from ...analysis import ImageWrapper
+from ...analysis.wrapper import ImageWrapper
 
 
 class ReadTask(QThread):

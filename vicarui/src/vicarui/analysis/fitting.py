@@ -4,25 +4,18 @@ from typing import Optional, Dict, Tuple
 import numpy as np
 from matplotlib.pyplot import Rectangle, Line2D, Axes
 from sklearn.linear_model import RANSACRegressor, LinearRegression
-from sklearn.pipeline import make_pipeline
+from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import PolynomialFeatures
+
+from .pipe import Pipe
 
 
 def to_zero_one(v: np.ndarray) -> np.ndarray:
     return (v - np.min(v)) * 1 / (np.max(v) - np.min(v))
 
 
-def reg_to_eq(regressor) -> np.ndarray:
-    return np.asarray([*regressor.coef_[::-1], regressor.intercept_])
-
-
-def reg_to_title(regressor, prefix: str) -> str:
-    from .tex import sci_4
-    a, b, c = reg_to_eq(regressor)
-    a = sci_4(a, plus_sign=True) + r"\cdot x^2"
-    b = sci_4(b, plus_sign=True) + r"\cdot x"
-    c = sci_4(c, plus_sign=True)
-    return fr"{prefix} ${a}{b}{c}$"
+def reg_to_title(reg: Pipe, prefix: str) -> str:
+    return fr"{prefix} ${reg.poly_str}$"
 
 
 def roots_2nd_deg(eq1: np.ndarray, eq2: np.ndarray):
@@ -76,10 +69,10 @@ def integrate_2nd_deg(eq1: np.ndarray, eq2: np.ndarray) -> float:
     return np.NAN
 
 
-def additional_2nd_deg_info(bg_reg, fg_reg) -> Tuple[str, np.ndarray]:
+def additional_2nd_deg_info(bg: Pipe, fg: Pipe) -> Tuple[str, np.ndarray]:
     from .tex import sci_4
-    eq1 = reg_to_eq(bg_reg)
-    eq2 = reg_to_eq(fg_reg)
+    eq1 = bg.eq
+    eq2 = fg.eq
     roots = roots_2nd_deg(eq1, eq2)
     out = "  "
     if np.alltrue(np.isreal(roots)):
@@ -183,27 +176,33 @@ class DataPacket(object):
         y_in = np.asarray(y_in)
         y_out = np.asarray(y_out)
 
-        from sklearn.metrics import mean_squared_error
-
         # BG
-        bg_reg = RANSACRegressor(
-            random_state=0,
-            max_trials=1000,
-            min_samples=int(np.sqrt(len(y_in))),
-            base_estimator=LinearRegression()
+        bg = Pipe(
+            transforms=[
+                PolynomialFeatures(self.degree, include_bias=False)
+            ],
+            reg=RANSACRegressor(
+                random_state=0,
+                max_trials=1000,
+                min_samples=int(np.sqrt(len(y_in))),
+                base_estimator=LinearRegression()
+            )
         )
-        pipe = make_pipeline(PolynomialFeatures(self.degree, include_bias=False), bg_reg)
-        pipe.fit(x_out, y_out)
+        pipe = bg.line.fit(x_out, y_out)
         pred_y_out = pipe.predict(nx_out[..., None])
-        bg_title = reg_to_title(bg_reg.estimator_, 'BG:')
+        bg_title = reg_to_title(bg, 'BG:') if self.degree == 2 else ""
 
         # FG
-        fg_reg = LinearRegression()
-        pipe = make_pipeline(PolynomialFeatures(self.degree, include_bias=False), fg_reg)
-        pipe.fit(x_in, y_in)
+        fg = Pipe(
+            reg=LinearRegression(),
+            transforms=[
+                PolynomialFeatures(self.degree, include_bias=False)
+            ]
+        )
+        pipe = fg.line.fit(x_in, y_in)
 
         if self.degree == 2:
-            add, roots = additional_2nd_deg_info(bg_reg.estimator_, fg_reg)
+            add, roots = additional_2nd_deg_info(bg, fg)
             if len(roots) == 2 and np.alltrue(np.isreal(roots)):
                 nx_in = np.linspace(roots[1], roots[0])
             else:
@@ -213,7 +212,7 @@ class DataPacket(object):
             nx_in = np.arange(x_in[0], x_in[-1], 0.25)
 
         pred_y_in = pipe.predict(nx_in[..., None])
-        fg_title = reg_to_title(fg_reg, 'FIT:')
+        fg_title = reg_to_title(fg, 'FIT:') if self.degree == 2 else ""
 
         from .tex import sci_4
         fg_mse = f'${sci_4(mean_squared_error(y_in, pipe.predict(x_in)))}$'
@@ -222,16 +221,16 @@ class DataPacket(object):
 
         return {
             'BG': {
-                'out': (x_out[np.logical_not(bg_reg.inlier_mask_)], y_out[np.logical_not(bg_reg.inlier_mask_)]),
+                'out': (x_out[np.logical_not(bg.reg.inlier_mask_)], y_out[np.logical_not(bg.reg.inlier_mask_)]),
                 'title': bg_title,
                 'line': Line2D(nx_out, pred_y_out, **out_kwargs),
                 'mse': bg_mse,
-                'equation': reg_to_eq(bg_reg.estimator_)
+                'equation': bg.eq
             },
             'FIT': {
                 'title': fg_title,
                 'line': Line2D(nx_in, pred_y_in, **in_kwargs),
                 'mse': fg_mse,
-                'equation': reg_to_eq(fg_reg)
+                'equation': fg.eq
             }
         }

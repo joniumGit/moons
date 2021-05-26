@@ -1,5 +1,9 @@
 import numpy as np
-from vicarui.analysis.fitting import integrate_2nd_deg, contrast_2nd_deg, roots_2nd_deg
+from sklearn.linear_model import HuberRegressor
+from sklearn.compose import TransformedTargetRegressor
+from sklearn.metrics import mean_squared_error
+from sklearn.preprocessing import PolynomialFeatures, RobustScaler
+from vicarui.analysis.fitting import integrate_2nd_deg, contrast_2nd_deg, roots_2nd_deg, Pipe
 
 eq1 = np.asarray([0, 0, 0])
 eq2 = np.asarray([1, -4, 0])
@@ -36,20 +40,32 @@ def test_integral():
 
 
 def test_re_to_eq():
-    from sklearn.preprocessing import Normalizer, PolynomialFeatures
-    from sklearn.pipeline import make_pipeline
-    from sklearn.linear_model import HuberRegressor
-    from sklearn.metrics import mean_squared_error
     x = np.asarray([0, 1, 2, 2.2, 3, 3.4, 4, 5])
     y = np.asarray([0, 1, 2, 2.0, 3, 2.0, 4, 5])
-    model = HuberRegressor()
-    pipe = make_pipeline(Normalizer(), PolynomialFeatures(degree=2, include_bias=False), model)
+    original_y = np.asarray([0, 1, 2, 3, 4, 5])
+
+    p = Pipe(
+        reg=TransformedTargetRegressor(
+            regressor=HuberRegressor(fit_intercept=False),
+        ),
+        transforms=[
+            PolynomialFeatures(degree=2, include_bias=False)
+        ]
+    )
+
+    pipe = p.line
     pipe.fit(x[..., None], y)
-    n_y = pipe.predict(np.arange(0, 6)[..., None])
-    true_y = np.asarray([0, 1, 2, 3, 4, 5])
-    print(true_y)
-    print(n_y)
-    print(mean_squared_error(true_y, n_y))
-    from vicarui.analysis.fitting import reg_to_eq
-    poly = np.poly1d(reg_to_eq(model))
-    assert np.equal(poly(Normalizer().fit_transform(np.arange(0, 6)[..., None])[:, 0]), n_y).all()
+    predicted = pipe.predict(np.arange(0, 6)[..., None])
+
+    print(f"true:           {original_y}")
+    print(f"predicted:      {predicted}")
+    print(f"mse:            {mean_squared_error(original_y, predicted)}")
+
+    print(f"eq:             {p.eq}")
+    print(f"str:            {p.poly_str}")
+
+    poly = np.poly1d(p.eq)
+    assert np.isclose(
+        predicted,
+        poly(np.arange(0, 6))
+    ).all()

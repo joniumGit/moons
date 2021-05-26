@@ -1,24 +1,10 @@
+from sklearn.compose import TransformedTargetRegressor
 from sklearn.linear_model import RANSACRegressor, LinearRegression
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import FunctionTransformer
+from sklearn.preprocessing import FunctionTransformer, RobustScaler
 
 from .classes import *
 from ..config import *
-from ....tex import sci_4
-
-
-def to_eq(x: RANSACRegressor):
-    return (
-            "$\n"
-            fr"$k: \, {sci_4(x.estimator_.coef_[0])}$"
-            + (
-                "\n"
-                fr"$a: \, {sci_4(x.estimator_.coef_[1])}$"
-                if len(x.estimator_.coef_) == 2 else ""
-            )
-            + "\n"
-              fr"$b: \, {sci_4(x.estimator_.intercept_)}$$\,"
-    )
+from ....pipe import Pipe
 
 
 def get_pipes(fits: List[Fit]):
@@ -36,23 +22,29 @@ def get_pipes(fits: List[Fit]):
             color="blue",
             style="-",
             title=r"$\frac{k}{x} + b$""\n",
-            pipe_producer=lambda r: make_pipeline(FunctionTransformer(np.reciprocal, np.reciprocal), r),
             reg=make_sac(LinearRegression(n_jobs=-1)),
-            eq_producer=to_eq
+            transforms=[
+                FunctionTransformer(np.reciprocal, np.reciprocal),
+            ],
         ),
         Pipe(
             name="log1p",
             color="magenta",
             style="-",
-            title=r"$\log y = a\log x + b$""\n",
-            pipe_producer=lambda r: make_pipeline(FunctionTransformer(np.log1p, np.expm1), r),
-            reg=make_sac(LinearRegression(n_jobs=-1)),
-            eq_producer=to_eq,
-            log=True
+            title=r"$\log y = k\log x + b$""\n",
+            reg=make_sac(TransformedTargetRegressor(
+                regressor=LinearRegression(n_jobs=-1),
+                func=np.log1p,
+                inverse_func=np.expm1
+            )),
+            transforms=[
+                FunctionTransformer(np.log1p, np.expm1)
+            ],
         )
     ]
 
 
 __all__ = [
-    'get_pipes'
+    'get_pipes',
+    'Pipe'
 ]

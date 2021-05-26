@@ -1,8 +1,6 @@
 from collections import Generator
 from dataclasses import dataclass
-from typing import Any, Callable, TypeVar
-
-from sklearn.pipeline import Pipeline
+from typing import Any
 
 from ..config import *
 from ..funcs import norm
@@ -10,8 +8,6 @@ from ..helpers import ImageHelper, Transformer
 from ....fitting import DataPacket
 from ....fitting import contrast_2nd_deg, integrate_2nd_deg
 from ....wrapper import ImageWrapper
-
-T = TypeVar('T')
 
 
 @dataclass(frozen=False)
@@ -46,26 +42,6 @@ class Fit:
             return self.arg_max
 
 
-@dataclass(frozen=False)
-class Pipe:
-    reg: T
-    eq_producer: Callable[[T], str]
-    pipe_producer: Callable[[T], Pipeline]
-    color: str
-    style: str
-    name: str
-    title: str = ""
-    log: bool = False
-
-    @property
-    def line(self):
-        return self.pipe_producer(self.reg)
-
-    @property
-    def eq(self):
-        return self.eq_producer(self.reg)
-
-
 class AutoFit:
     packet: DataPacket
     start_x: int
@@ -86,7 +62,7 @@ class AutoFit:
 
         x_val, contrast = contrast_2nd_deg(bg, fg)
         integral = integrate_2nd_deg(bg, fg)
-        dist_px = (self.start_x - x, self.start_y - y)
+        dist_px = (np.abs(self.start_x - x), np.abs(self.start_y - y))
         return Fit(
             arg_max=x_val,
             contrast=contrast,
@@ -142,7 +118,6 @@ class FitHelper:
 
 
 __all__ = [
-    'Pipe',
     'Selection',
     'AutoFit',
     'Fit',
