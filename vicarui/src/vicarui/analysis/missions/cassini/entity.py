@@ -69,12 +69,13 @@ class PlotPacket:
         else:
             self.ax.plot(*np.column_stack((tp, tp + sat * 1 / np.linalg.norm(sat))), color=SATURN_COLOR)
 
-    def plot_camera(self):
-        bore, bounds = get_camera_intersects(self.helper)
+    def plot_camera(self, closeup: bool = True):
+        bore, bounds, up = get_camera_intersects(self.helper)
         cas = scale_to_rs(self.helper.pos_in_sat(CASSINI_ID, SATURN_ID))
         self.ax.scatter(cas[0], cas[1], cas[2], c=CASSINI_COLOR, zorder=10)
         self.ax.plot([cas[0], cas[0]], [cas[1], cas[1]], [0, cas[2]], c=CASSINI_COLOR, zorder=10)
         self.ax.plot(*np.column_stack((cas, bore)), color=CAMERA_COLOR, zorder=100)
+        self.ax.plot(*np.column_stack((bore, bore + up)), color=CAMERA_COLOR, zorder=100)
         for b in bounds:
             self.ax.plot(*b, color=CAMERA_COLOR, linestyle='--', zorder=100, alpha=0.65)
         if len(bounds) == 4:
@@ -83,13 +84,18 @@ class PlotPacket:
             for c, rc in combinations(coord, 2):
                 if c is not rc:
                     self.ax.plot(*np.column_stack((c, rc)), color=CAMERA_COLOR, linestyle='--', zorder=100)
-        if self.helper.config[CUBIC]:
-            self.ax.autoscale(False)
+        self.ax.set_box_aspect((1, 1, 1))
+        if closeup:
             diff = 1.2 * np.max([np.linalg.norm(bore - b) for b in bounds[:, :, 1]])
             i = 0
             for f in [self.ax.set_xlim3d, self.ax.set_ylim3d, self.ax.set_zlim3d]:
                 f((bore[i] - diff, bore[i] + diff))
                 i += 1
+        else:
+            max_lim = np.amax([self.ax.get_xlim3d(), self.ax.get_ylim3d(), self.ax.get_zlim3d()], axis=0)
+            diff = max_lim[1] - max_lim[0]
+            for f in [self.ax.set_xlim3d, self.ax.set_ylim3d, self.ax.set_zlim3d]:
+                f((-diff, diff))
 
     def label(self):
         self.ax.set_xlabel(r"X ($R_s$)")

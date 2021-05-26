@@ -27,7 +27,10 @@ def view_geometry(*_, image: ImageWrapper = None, **config):
 
         fig = Figure()
         agg = FigureCanvasQTAgg(figure=fig)
-        ax: Axes3D = fig.add_subplot(111, projection='3d')
+
+        ax: Axes3D = fig.add_subplot(121, projection='3d')
+        ax2: Axes3D = fig.add_subplot(122, projection='3d')
+
         sub.addWidget(agg, stretch=1)
         tb = NavigationToolbar2QT(agg, d)
         sub.addWidget(tb)
@@ -42,6 +45,13 @@ def view_geometry(*_, image: ImageWrapper = None, **config):
             pp.plot_target()
             pp.plot_sun()
             pp.plot_camera()
+            pp.label()
+
+            pp = PlotPacket(helper, ax2)
+            pp.plot_saturn()
+            pp.plot_target()
+            pp.plot_sun()
+            pp.plot_camera(closeup=False)
             pp.label()
 
             sat_cas_dist = np.linalg.norm(helper.pos_in_sat(SATURN_ID, CASSINI_ID))

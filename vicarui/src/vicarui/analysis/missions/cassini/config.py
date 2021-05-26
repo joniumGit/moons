@@ -69,7 +69,6 @@ SUN_SATURN_VECTORS = "Draw Sun Saturn Vectors"
 TARGET_OVERRIDE = "Target Override"
 INSTRUMENT_OVERRIDE = "Instrument Override"
 SIZE_FRAME = "Size at (0: target, 1: shadow, 2: ring)"
-CUBIC = "Show geometry in a cubic frame"
 
 SIZE_AT_TARGET = 0
 SIZE_AT_SHADOW = 1
@@ -83,5 +82,4 @@ def get_config():
         TARGET_OVERRIDE: (str, None),
         INSTRUMENT_OVERRIDE: (str, None),
         SIZE_FRAME: (int, 0),
-        CUBIC: (bool, True)
     }

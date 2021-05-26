@@ -2,27 +2,34 @@ from functools import cache
 
 from .config import *
 from .helpers import *
+from ....support import looping_pairs
 
 
-def max_mag(bore: np.ndarray, corners: np.ndarray) -> Tuple[float, float]:
+def _image_size(corners: np.ndarray) -> Tuple[float, float]:
     """
-    Width, Height
+    Figure out the actual width and height of the image in kilometers
+
+    Assume the following for the bounds:
+    - Cassini defines the UP direction to be at positive y
+    - First FOV vector is at +X, +Y:
+
+        F1  y
+            ^
+        x < 0
+
+      At least according to IK files.
+
+    With this assumption in mind this will return a Tuple:
+    - Width:    AVERAGE(TOP, BOTTOM)
+    - Height:   AVERAGE(RIGHT, LEFT)
     """
-    from itertools import combinations
-    max_sep = np.sort(np.asarray([np.linalg.norm(a - b) for a, b in combinations(corners, 2)]))
+    top, right, bottom, left = [np.linalg.norm(p[0] - p[1]) for p in looping_pairs(corners)]
 
-    x, y = np.abs(bore[0:2])
+    rl = np.average((right, left))
+    tb = np.average((top, bottom))
 
-    larger = np.average(max_sep[2:4])
-    smaller = np.average(max_sep[0:2])
-
-    log.info("Corner diffs: " + ','.join([f"{a:.5e}" for a in max_sep[:-2]]))
-
-    if x < y:
-        # y-diff is bigger
-        return smaller, larger
-    else:
-        return larger, smaller
+    log.info("Corner diffs: " + ','.join([f"{a:.5e}" for a in (right, bottom, left, top)]))
+    return tb, rl
 
 
 def norm(v: np.ndarray) -> np.ndarray:
@@ -52,7 +59,7 @@ def img_rp_size(helper: ImageHelper) -> Tuple[float, float]:
         tb = t(b)
         corners.append(cas_xy + tb[0:2] * (-cas_z / tb[2]))
 
-    return max_mag(t(bore), np.asarray(corners))
+    return _image_size(np.asarray(corners))
 
 
 def img_sp_size(helper: ImageHelper) -> Tuple[float, float]:
@@ -66,7 +73,7 @@ def img_sp_size(helper: ImageHelper) -> Tuple[float, float]:
     spi = ShadowPlaneIntersect(helper)
     corners = [spi(t(b)) for b in bounds]
 
-    return max_mag(t(bore), np.asarray(corners))
+    return _image_size(np.asarray(corners))
 
 
 def img_raw_size(helper: ImageHelper) -> Tuple[float, float]:
@@ -83,7 +90,7 @@ def img_raw_size(helper: ImageHelper) -> Tuple[float, float]:
     bore_len = np.linalg.norm(bore)
     corners = [t(b) * target_dist / np.dot(t(b), bore) * bore_len for b in bounds]
 
-    return max_mag(t(bore), np.asarray(corners))
+    return _image_size(np.asarray(corners))
 
 
 @cache
@@ -130,14 +137,15 @@ def get_camera_intersects(helper: ImageHelper):
             nll = np.dot(tb, bore) / bore_len
             bound_intersects.append(np.column_stack((cassini_pos, cassini_pos + tb * target_dist / nll)))
     bound_intersects = np.asarray([scale_to_rs(bi) for bi in bound_intersects])
-    return scale_to_rs(bore_intercept), bound_intersects
+    up = scale_to_rs(t(np.asarray([0, 1, 0])))
+    scale = np.linalg.norm(bound_intersects[0] - bound_intersects[-1]) / (2 * np.linalg.norm(up))
+    return scale_to_rs(bore_intercept), bound_intersects, up * scale
 
 
 __all__ = [
     'norm',
     'rs',
     'scale_to_rs',
-    'max_mag',
     'get_camera_intersects',
     'get_config',
     'img_rp_size',

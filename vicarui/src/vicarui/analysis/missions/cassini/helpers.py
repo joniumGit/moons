@@ -136,6 +136,7 @@ class ImageHelper:
         Frame, Bore, Bounds
         """
         _, frame, bore, _, bounds = spice.getfov(spice.bods2c(self.frame), 4)
+        log.debug(f"FRAME: {frame} BORE: {bore} BOUNDS: "f"{bounds}".replace("\n", ""))
         return frame, bore, bounds
 
     @cached_property
@@ -270,6 +271,9 @@ class Transformer:
 class ShadowPlaneIntersect:
     """
     Transforms a vector to point to the nearest point to shadow CASSINI ONLY
+
+    Tries to transform a fov boundary vector to a point where it intersects the X,Y-projection
+    of the shadow or sun vector
     """
 
     def __init__(self, helper: ImageHelper):
