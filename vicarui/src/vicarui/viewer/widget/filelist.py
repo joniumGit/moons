@@ -44,7 +44,7 @@ class FileModel(QStandardItemModel):
         items = list()
         for k, v in files.items():
             if len(v) != 0:
-                i = CategoryItem(f"Sequence {k}")
+                i = CategoryItem(f"{k}")
                 for j in v:
                     si = PathItem(j)
                     i.appendRow(si)
@@ -116,12 +116,17 @@ class FileListWidget(qt.QWidget):
         clear_btn = Button("Clear")
         item_label = Label("Image files")
         item_view = qt.QTreeView()
+        sort_selection = qt.QComboBox()
+        sort_selection.addItems(FileTask.Sort.SELECTIONS[::-1])
+        sort_selection.setEditable(False)
+        self.sort_selection = sort_selection
 
         item_view.setHeaderHidden(True)
         item_view.mouseDoubleClickEvent = self.show_on_dbl
         item_view.setSelectionMode(item_view.SelectionMode.ExtendedSelection)
 
         layout.addWidget(item_label)
+        layout.addWidget(sort_selection)
         layout.addWidget(item_view)
         layout.addSpacerItem(Spacer())
         layout.addWidget(load_btn, alignment=C)
@@ -187,7 +192,11 @@ class FileListWidget(qt.QWidget):
         if selected is not None and selected != "":
             Busy.set_busy()
             debug("Picked dir %s", str(selected))
-            Tasker.run(FileTask(selected, self.files_callback))
+            Tasker.run(FileTask(
+                selected,
+                self.files_callback,
+                sort_by=self.sort_selection.itemText(self.sort_selection.currentIndex())
+            ))
 
     @invoke_safe
     def show_on_dbl(self, event: QMouseEvent) -> None:
