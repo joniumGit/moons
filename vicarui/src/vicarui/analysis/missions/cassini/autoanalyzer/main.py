@@ -14,7 +14,6 @@ from .definition import *
 from .show import show
 from ..config import *
 from ..helpers import ImageHelper
-from ....fitting import to_zero_one
 from ....kernels import load_kernels_for_image, release_kernels
 from ....tex import sci_2
 from ....wrapper import ImageWrapper
@@ -73,7 +72,7 @@ def auto(*_, image: ImageWrapper = None, **config):
         fig.set_tight_layout('true')
         imdata = helper.data.copy().astype('float64')
         imdata[np.logical_not(np.isfinite(imdata))] = np.average(imdata[np.isfinite(imdata)])
-        imdata = to_zero_one(imdata)
+        imdata = image.normalize(imdata)
         ax.imshow = partial(
             ax.imshow,
             imdata,

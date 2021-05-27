@@ -1,10 +1,14 @@
 def e(s: str):
     part = s.split('e')
-    p1 = int(part[1])
-    if len(part) != 1:
-        return part[0] + r"\cdot 10^{" + f"{'+' if p1 >= 0 else ''}{str(p1)}" + "}"
-    else:
-        return part[0]
+    try:
+        p1 = int(part[1])
+        if len(part) != 1:
+            return part[0] + r"\cdot 10^{" + f"{'+' if p1 >= 0 else ''}{str(p1)}" + "}"
+        else:
+            return part[0]
+    except IndexError:
+        return "nan"
+
 
 
 def sci_2(val: float, plus_sign: bool = False) -> str:

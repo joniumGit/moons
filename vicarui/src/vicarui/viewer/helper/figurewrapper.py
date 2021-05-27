@@ -9,7 +9,6 @@ from matplotlib.figure import Figure
 
 from .imageevent import VicarEvent
 from ...analysis import ImageWrapper, set_info
-from ...analysis.fitting import to_zero_one
 from ...support import logging as log
 from ...support import stop_progress, start_progress, signal
 
@@ -93,7 +92,7 @@ class FigureWrapper(FigureCanvasQTAgg):
 
         self.event_handler = VicarEvent(image.processed, data, line, self._holder.click)
 
-        reduced = to_zero_one(image.processed)
+        reduced = image.normalize(image.processed)
         normalizer = norm(reduced)
         data.imshow(reduced, norm=normalizer, cmap="gray", aspect="equal", interpolation='none', origin='upper')
         og.imshow(image.original, cmap="gray", interpolation='none', origin='upper')

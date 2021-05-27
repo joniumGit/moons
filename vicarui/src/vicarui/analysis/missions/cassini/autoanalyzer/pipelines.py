@@ -1,10 +1,10 @@
 from sklearn.compose import TransformedTargetRegressor
-from sklearn.linear_model import RANSACRegressor, LinearRegression
-from sklearn.preprocessing import FunctionTransformer, RobustScaler
+from sklearn.linear_model import RANSACRegressor
+from sklearn.preprocessing import FunctionTransformer
 
 from .classes import *
 from ..config import *
-from ....pipe import Pipe
+from ....pipe import Pipe, OLSWrapper
 
 
 def get_pipes(fits: List[Fit]):
@@ -22,7 +22,7 @@ def get_pipes(fits: List[Fit]):
             color="blue",
             style="-",
             title=r"$\frac{k}{x} + b$""\n",
-            reg=make_sac(LinearRegression(n_jobs=-1)),
+            reg=make_sac(OLSWrapper()),
             transforms=[
                 FunctionTransformer(np.reciprocal, np.reciprocal),
             ],
@@ -33,7 +33,7 @@ def get_pipes(fits: List[Fit]):
             style="-",
             title=r"$\log y = k\log x + b$""\n",
             reg=make_sac(TransformedTargetRegressor(
-                regressor=LinearRegression(n_jobs=-1),
+                regressor=OLSWrapper(),
                 func=np.log1p,
                 inverse_func=np.expm1
             )),

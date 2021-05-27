@@ -3,7 +3,7 @@ from typing import Optional, Dict, Tuple, Union, Callable, List
 
 from .fitting import DataPacket
 from .kernels import provide_kernels
-from .pipe import Pipe
+from .pipe import Pipe, OLSWrapper
 from .reduction import br_reduction
 from .tex import *
 from .wrapper import ImageWrapper

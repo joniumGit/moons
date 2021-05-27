@@ -1,9 +1,9 @@
 import numpy as np
-from sklearn.linear_model import HuberRegressor
 from sklearn.compose import TransformedTargetRegressor
 from sklearn.metrics import mean_squared_error
-from sklearn.preprocessing import PolynomialFeatures, RobustScaler
+from sklearn.preprocessing import PolynomialFeatures
 from vicarui.analysis.fitting import integrate_2nd_deg, contrast_2nd_deg, roots_2nd_deg, Pipe
+from vicarui.analysis.pipe import OLSWrapper
 
 eq1 = np.asarray([0, 0, 0])
 eq2 = np.asarray([1, -4, 0])
@@ -46,10 +46,10 @@ def test_re_to_eq():
 
     p = Pipe(
         reg=TransformedTargetRegressor(
-            regressor=HuberRegressor(fit_intercept=False),
+            regressor=OLSWrapper(),
         ),
         transforms=[
-            PolynomialFeatures(degree=2, include_bias=False)
+            PolynomialFeatures(degree=1, include_bias=False)
         ]
     )
 
@@ -68,4 +68,8 @@ def test_re_to_eq():
     assert np.isclose(
         predicted,
         poly(np.arange(0, 6))
+    ).all()
+    assert np.isclose(
+        predicted,
+        np.polyval(np.polyfit(x, y, 1), np.arange(0, 6))
     ).all()

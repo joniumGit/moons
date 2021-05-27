@@ -3,15 +3,10 @@ from typing import Optional, Dict, Tuple
 
 import numpy as np
 from matplotlib.pyplot import Rectangle, Line2D, Axes
-from sklearn.linear_model import RANSACRegressor, LinearRegression
 from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import PolynomialFeatures
 
-from .pipe import Pipe
-
-
-def to_zero_one(v: np.ndarray) -> np.ndarray:
-    return (v - np.min(v)) * 1 / (np.max(v) - np.min(v))
+from .pipe import Pipe, ransac
 
 
 def reg_to_title(reg: Pipe, prefix: str) -> str:
@@ -25,6 +20,44 @@ def roots_2nd_deg(eq1: np.ndarray, eq2: np.ndarray):
     Returns roots from largest to smallest
     """
     return -np.sort(-np.roots(eq1 - eq2))
+
+
+def contrast_error_2nd_deg(bg: Pipe, fg: Pipe) -> Tuple[float, float]:
+    """
+    Evaluates the maximum error for x, and contrast
+
+    Assuming ERR_SUM = SQRT(BG^2 + FG^2)
+    |ERR X|         <= (Df_a * d_a)^2 + (Df_b * d_b)^2
+                        + 2 * D_a * D_b * COV_ab
+    |ERR CONTRAST|  <= (Df_a * d_a)^2 + (Df_b * d_b)^2 + (Df_c * d_c)^2
+                        + 2 * D_a * D_b * COV_ab
+                        + 2 * D_a * D_c * COV_ac
+                        + 2 * D_b * D_c * COV_bc
+    """
+    eq_err = np.sqrt(np.power(bg.base.errors, 2) + np.power(fg.base.errors, 2))
+    x_err = [
+        np.divide(eq_err[1], np.power(eq_err[0], 2)) * eq_err[2],
+        np.reciprocal(eq_err[0]) * eq_err[1],
+    ]
+
+    x_err_sum: float = np.sum(np.abs(np.power([e * c for e, c in zip(eq_err[0:2], x_err)], 2)))
+
+    b_cov = bg.base.result_.cov_params()
+    f_cov = fg.base.result_.cov_params()
+    x_err_sum += 2 * (b_cov[0][1] + f_cov[0][1]) * x_err[0] * x_err[1]  # a - b
+
+    e_term = 0.5 * np.divide(eq_err[1], eq_err[0])
+    c_err = [
+        np.power(e_term, 2) * eq_err[0],
+        e_term * eq_err[1],
+        -0.25 * np.divide(np.power(eq_err[1], 2), eq_err[0]) + 1,
+    ]
+    c_err_sum: float = np.sum(np.abs(np.power([e * c for e, c in zip(eq_err, c_err)], 2)))
+    c_err_sum += 2 * c_err[0] * c_err[1] * (b_cov[0][1] + f_cov[0][1])  # a - b
+    c_err_sum += 2 * c_err[0] * c_err[2] * (b_cov[0][2] + f_cov[0][2])  # a - c
+    c_err_sum += 2 * c_err[1] * c_err[2] * (b_cov[1][1] + f_cov[1][1])  # b - c
+
+    return x_err_sum, c_err_sum
 
 
 def contrast_2nd_deg(eq1: np.ndarray, eq2: np.ndarray) -> Tuple[float, float]:
@@ -77,8 +110,26 @@ def additional_2nd_deg_info(bg: Pipe, fg: Pipe) -> Tuple[str, np.ndarray]:
     out = "  "
     if np.alltrue(np.isreal(roots)):
         x_val, d = contrast_2nd_deg(eq1, eq2)
+        x_err, c_err = contrast_error_2nd_deg(bg, fg)
         integral = integrate_2nd_deg(eq1, eq2)
-        out += r"    $\Delta_{max}=" f" {sci_4(d)}, x={x_val:3.2f}$"
+
+        from .internal import log
+        from .tex import sci_2
+
+        newline = '\n'
+        log.info(
+            f"""
+            Values:
+            - BG EQ: {str(eq1).replace(newline, "")} ERR: {str(bg.base.errors).replace(newline, "")}
+            - FG EQ: {str(eq2).replace(newline, "")} ERR: {str(fg.base.errors).replace(newline, "")}
+            - Contrast: {d:.7e}    ERR: {c_err:.7e} 
+            - X Pos:    {x_val:.7e}    ERR: {x_err:.7e}
+            - Integral: {integral:.7e}
+            """
+        )
+
+        out += r"    $\Delta_{max}=" f" {sci_4(d)}" r"\pm "
+        out += f"{sci_4(c_err)}" f", x={x_val:3.2f} " r"\pm " f" {sci_2(x_err)}$"
         out += fr"  $\int\Delta={sci_4(integral)}, x_0={roots[1]:3.2f}, x_1={roots[0]:3.2f}$"
     return out, roots
 
@@ -178,27 +229,14 @@ class DataPacket(object):
 
         # BG
         bg = Pipe(
-            transforms=[
-                PolynomialFeatures(self.degree, include_bias=False)
-            ],
-            reg=RANSACRegressor(
-                random_state=0,
-                max_trials=1000,
-                min_samples=int(np.sqrt(len(y_in))),
-                base_estimator=LinearRegression()
-            )
+            transforms=[PolynomialFeatures(self.degree, include_bias=False)],
+            reg=ransac(min_samples=int(np.sqrt(len(y_in))))
         )
         pipe = bg.line.fit(x_out, y_out)
         pred_y_out = pipe.predict(nx_out[..., None])
-        bg_title = reg_to_title(bg, 'BG:') if self.degree == 2 else ""
 
         # FG
-        fg = Pipe(
-            reg=LinearRegression(),
-            transforms=[
-                PolynomialFeatures(self.degree, include_bias=False)
-            ]
-        )
+        fg = Pipe(transforms=[PolynomialFeatures(self.degree, include_bias=False)])
         pipe = fg.line.fit(x_in, y_in)
 
         if self.degree == 2:
@@ -212,9 +250,11 @@ class DataPacket(object):
             nx_in = np.arange(x_in[0], x_in[-1], 0.25)
 
         pred_y_in = pipe.predict(nx_in[..., None])
-        fg_title = reg_to_title(fg, 'FIT:') if self.degree == 2 else ""
 
         from .tex import sci_4
+        bg_title = reg_to_title(bg, 'BG: ')
+        fg_title = reg_to_title(fg, 'FIT:')
+
         fg_mse = f'${sci_4(mean_squared_error(y_in, pipe.predict(x_in)))}$'
         bg_err = sci_4(mean_squared_error(y_out, pipe.predict(x_out)))
         bg_mse = f'${bg_err}$' + add

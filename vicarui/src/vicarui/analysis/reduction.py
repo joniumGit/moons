@@ -1,11 +1,11 @@
 from typing import NoReturn
 
 import numpy as np
-from sklearn.linear_model import RANSACRegressor, LinearRegression
 from sklearn.metrics import mean_squared_error
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import PolynomialFeatures
 
+from .pipe import ransac
 from .wrapper import ImageWrapper
 from ..support import info
 
@@ -53,12 +53,7 @@ def br_reduction(
 
     try:
         if gen_bg:
-            reg = RANSACRegressor(
-                max_trials=100,
-                min_samples=int(np.sqrt(img.shape[0] * img.shape[1])),
-                base_estimator=LinearRegression(n_jobs=-1),
-                random_state=0
-            )
+            reg = ransac(min_samples=int(np.sqrt(img.shape[0] * img.shape[1])), max_iter=100)
             pipe = make_pipeline(
                 PolynomialFeatures(degree=degree, include_bias=False),
                 reg
@@ -81,6 +76,7 @@ def br_reduction(
             image.outliers = np.ma.masked_where(inlier_mask, inlier_mask)
 
             info(f"Background mse: {mse:.5e}")
+            info(f"Bacground coefs (model direct):\n{reg.estimator_.coef_}\n{reg.estimator_.intercept_}")
     except Exception as e:
         from ..support import handle_exception
         handle_exception(e)

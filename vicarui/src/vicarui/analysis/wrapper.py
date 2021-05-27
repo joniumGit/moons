@@ -4,8 +4,6 @@ from typing import Optional, Tuple
 import numpy as np
 from vicarutil.image import VicarImage
 
-from .fitting import to_zero_one
-
 
 class ImageWrapper(object):
     _raw: VicarImage
@@ -33,6 +31,10 @@ class ImageWrapper(object):
         self.active = False
         self.normalized = False
         self.border = 0
+
+    @staticmethod
+    def normalize(img: np.ndarray):
+        return (img - np.min(img)) * 1 / (np.max(img) - np.min(img))
 
     @property
     def raw(self) -> VicarImage:
@@ -81,7 +83,7 @@ class ImageWrapper(object):
         if self.active:
             img = img - self.background
         if self.normalized:
-            img = to_zero_one(img)
+            img = self.normalize(img)
         return img
 
     @property

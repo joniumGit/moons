@@ -4,5 +4,5 @@ from .logging import *
 from .mpl import *
 from .progress import *
 from .tasks import *
-from .wrappers import *
+from .wrapper_functions import *
 from .iterables import *

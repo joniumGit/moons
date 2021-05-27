@@ -23,7 +23,8 @@ setuptools.setup(
         "matplotlib",
         "astropy",
         "numpy",
-        "scikit-learn"
+        "scikit-learn",
+        "statsmodels"
     ],
     extras_require={
         "full": ["spiceypy"]
