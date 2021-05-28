@@ -72,6 +72,12 @@ def show(
                 except ValueError:
                     log.exception("Failed a regression analysis")
 
+                try:
+                    ax.set_ylim(np.percentile(data_, 1), np.percentile(data_, 99))
+                    pass
+                except ValueError:
+                    pass
+
                 ax.figure.canvas.draw()
                 ax.figure.canvas.flush_events()
 

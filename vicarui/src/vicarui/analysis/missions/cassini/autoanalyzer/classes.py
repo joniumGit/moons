@@ -46,13 +46,16 @@ class AutoFit:
     packet: DataPacket
     start_x: int
     start_y: int
+    dist: Tuple[float, float]
 
     def __init__(self, packet: DataPacket):
         self.packet = packet
         self.start_x = 0
         self.start_y = 0
+        self.dist = (0, 0)
 
     def select(self, x: int, y: int, vertical: bool = False) -> Any:
+        self.dist = (np.abs(self.start_x - x), np.abs(self.start_y - y))
         return self.packet.select(x, y, vertical)
 
     def fit(self, x: float, y: float) -> Fit:
@@ -62,12 +65,11 @@ class AutoFit:
 
         x_val, contrast = contrast_2nd_deg(bg, fg)
         integral = integrate_2nd_deg(bg, fg)
-        dist_px = (np.abs(self.start_x - x), np.abs(self.start_y - y))
         return Fit(
             arg_max=x_val,
             contrast=contrast,
             integral=integral,
-            distance_px=dist_px
+            distance_px=self.dist
         )
 
 
