@@ -56,7 +56,7 @@ class AutoFit:
         return self.packet.select(x, y, vertical)
 
     def fit(self, x: float, y: float) -> Fit:
-        data = self.packet.fit(x, y)
+        data = self.packet.fit(x, y, suppress=True)
         bg = data['BG']['equation']
         fg = data['FIT']['equation']
 

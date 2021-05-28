@@ -33,12 +33,12 @@ class OLSWrapper(BaseEstimator, RegressorMixin):
     def fit(self, X, y):
         self.X_ = X
         self.y_ = y
-        self.model_ = self.model_cls(self.y_, add_constant(self.X_))
+        self.model_ = self.model_cls(self.y_, add_constant(self.X_, has_constant='add'))
         self.result_: RegressionResults = self.model_.fit()
         return self
 
     def predict(self, X, y=None):
-        return self.result_.predict(add_constant(X))
+        return self.result_.predict(add_constant(X, has_constant='add'))
 
     @property
     def metrics_model(self):

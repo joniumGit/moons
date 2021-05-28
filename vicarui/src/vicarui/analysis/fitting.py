@@ -102,7 +102,7 @@ def integrate_2nd_deg(eq1: np.ndarray, eq2: np.ndarray) -> float:
     return np.NAN
 
 
-def additional_2nd_deg_info(bg: Pipe, fg: Pipe) -> Tuple[str, np.ndarray]:
+def additional_2nd_deg_info(bg: Pipe, fg: Pipe, suppress: bool) -> Tuple[str, np.ndarray]:
     from .tex import sci_4
     eq1 = bg.eq
     eq2 = fg.eq
@@ -117,16 +117,18 @@ def additional_2nd_deg_info(bg: Pipe, fg: Pipe) -> Tuple[str, np.ndarray]:
         from .tex import sci_2
 
         newline = '\n'
-        log.info(
-            f"""
-            Values:
-            - BG EQ: {str(eq1).replace(newline, "")} ERR: {str(bg.base.errors).replace(newline, "")}
-            - FG EQ: {str(eq2).replace(newline, "")} ERR: {str(fg.base.errors).replace(newline, "")}
-            - Contrast: {d:.7e}    ERR: {c_err:.7e} 
-            - X Pos:    {x_val:.7e}    ERR: {x_err:.7e}
-            - Integral: {integral:.7e}
-            """
-        )
+
+        if not suppress:
+            log.info(
+                f"""
+                Values:
+                - BG EQ: {str(eq1).replace(newline, "")} ERR: {str(bg.base.errors).replace(newline, "")}
+                - FG EQ: {str(eq2).replace(newline, "")} ERR: {str(fg.base.errors).replace(newline, "")}
+                - Contrast: {d:.7e}    ERR: {c_err:.7e} 
+                - X Pos:    {x_val:.7e}    ERR: {x_err:.7e}
+                - Integral: {integral:.7e}
+                """
+            )
 
         out += r"    $\Delta_{max}=" f" {sci_4(d)}" r"\pm "
         out += f"{sci_4(c_err)}" f", x={x_val:3.2f} " r"\pm " f" {sci_2(x_err)}$"
@@ -201,7 +203,7 @@ class DataPacket(object):
     def scatter(self, ax: Axes, **kwargs):
         ax.scatter(self.x_data, self.y_data, **kwargs)
 
-    def fit(self, x_start: float, x_end: float, in_kwargs=None, out_kwargs=None) -> Dict:
+    def fit(self, x_start: float, x_end: float, in_kwargs=None, out_kwargs=None, suppress: bool = False) -> Dict:
         if out_kwargs is None:
             out_kwargs = dict()
         if in_kwargs is None:
@@ -240,7 +242,7 @@ class DataPacket(object):
         pipe = fg.line.fit(x_in, y_in)
 
         if self.degree == 2:
-            add, roots = additional_2nd_deg_info(bg, fg)
+            add, roots = additional_2nd_deg_info(bg, fg, suppress)
             if len(roots) == 2 and np.alltrue(np.isreal(roots)):
                 nx_in = np.linspace(roots[1], roots[0])
             else:
