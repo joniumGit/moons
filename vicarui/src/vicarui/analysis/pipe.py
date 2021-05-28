@@ -54,7 +54,7 @@ class OLSWrapper(BaseEstimator, RegressorMixin):
 
     @property
     def errors(self):
-        return np.asarray([*self.metrics_model.bse])
+        return np.asarray([*self.metrics_model.bse[::-1]])
 
 
 @dataclass(frozen=False)
