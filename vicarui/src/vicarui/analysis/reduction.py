@@ -5,7 +5,7 @@ from sklearn.metrics import mean_squared_error
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import PolynomialFeatures
 
-from .pipe import ransac
+from .pipe import ransac, OLSWrapper
 from .wrapper import ImageWrapper
 from ..support import info
 
@@ -75,8 +75,15 @@ def br_reduction(
             image.mse = mse
             image.outliers = np.ma.masked_where(inlier_mask, inlier_mask)
 
+            n = '\n'
             info(f"Background mse: {mse:.5e}")
-            info(f"Bacground coefs (model direct):\n{reg.estimator_.coef_}\n{reg.estimator_.intercept_}")
+            est: OLSWrapper = reg.estimator_
+            info(
+                f"Bacground (model direct):"
+                f"\n- Coef:       {str(est.coef_).replace(n, '')}"
+                f"\n- Intercept:  {str(est.intercept_).replace(n, '')}"
+                f"\n- Errors:     {str(est.errors).replace(n, '')}"
+            )
     except Exception as e:
         from ..support import handle_exception
         handle_exception(e)

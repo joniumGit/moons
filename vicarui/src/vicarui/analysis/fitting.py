@@ -122,8 +122,8 @@ def additional_2nd_deg_info(bg: Pipe, fg: Pipe, suppress: bool) -> Tuple[str, np
             log.info(
                 f"""
                 Values:
-                - BG EQ: {str(eq1).replace(newline, "")} ERR: {str(bg.base.errors).replace(newline, "")}
-                - FG EQ: {str(eq2).replace(newline, "")} ERR: {str(fg.base.errors).replace(newline, "")}
+                - BG EQ: {str(eq1).replace(newline, "")} ERR: {str(bg.errors).replace(newline, "")}
+                - FG EQ: {str(eq2).replace(newline, "")} ERR: {str(fg.errors).replace(newline, "")}
                 - Contrast: {d:.7e}    ERR: {c_err:.7e} 
                 - X Pos:    {x_val:.7e}    ERR: {x_err:.7e}
                 - Integral: {integral:.7e}

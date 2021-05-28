@@ -46,14 +46,27 @@ class OLSWrapper(BaseEstimator, RegressorMixin):
 
     @property
     def intercept_(self):
+        """
+        Intercept
+        """
         return self.metrics_model.params[0]
 
     @property
     def coef_(self):
+        """
+        From largest to smallest C[n] * x^n + C[(n-1)] + x ^(n-1) + ....
+
+        No intercept
+        """
         return self.metrics_model.params[1:][::-1]
 
     @property
     def errors(self):
+        """
+        Same order as coef, intercept last
+
+        C[n] * x^n + C[(n-1)] + x ^(n-1) + ....
+        """
         return np.asarray([*self.metrics_model.bse[::-1]])
 
 
@@ -76,6 +89,10 @@ class Pipe:
             except AttributeError:
                 reg = reg.estimator_
         return cast(OLSWrapper, reg)
+
+    @property
+    def errors(self):
+        return self.base.errors
 
     @property
     def line(self) -> Pipeline:
@@ -108,7 +125,7 @@ class Pipe:
                 + "\n"
                   fr"$b: \, {sci_4(eq[2 if use_a else 1])}$"
                 + "\n"
-                  fr"err: $(" + ','.join([sci_4(x) for x in self.base.errors]) + ")$$\,"
+                  fr"err: $(" + ','.join([sci_4(x) for x in self.errors]) + ")$$\,"
         )
 
     @property
@@ -120,7 +137,7 @@ class Pipe:
             for idx, coef in enumerate(reversed(eq[:-1]), start=1)
         ]))
         out += f' {sci_4(eq[-1], plus_sign=True)}'
-        out += '$\n' r'$ \Delta_{std}(' + ','.join([sci_4(x) for x in self.base.errors]) + ")"
+        out += '$\n' r'$ \Delta_{std}(' + ','.join([sci_4(x) for x in self.errors]) + ")"
         return out
 
 
