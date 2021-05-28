@@ -48,7 +48,7 @@ class FigureWrapper(FigureCanvasQTAgg):
         line: Axes = None
 
         norm: ImageNormalize = None
-        click: Tuple[int, int] = None
+        click: Callable[[], Tuple[int, int]] = None
 
     _holder: Holder = None
     _task: QThread = None
@@ -152,7 +152,7 @@ class FigureWrapper(FigureCanvasQTAgg):
             image: ImageWrapper,
             norm: Callable[[np.ndarray], Union[ImageNormalize, None]],
             br_pack: Dict[str, Any],
-            click_area: Tuple[int, int],
+            click_area: Callable[[], Tuple[int, int]],
             restore: bool = False,
             **kwargs
     ):
@@ -168,6 +168,15 @@ class FigureWrapper(FigureCanvasQTAgg):
         self._task.done.connect(self._show_image_2)
 
         self._task.start()
+
+    def click(self, pkg: Tuple[float, float, bool]):
+        x, y, right = pkg
+        try:
+            handler = self.event_handler
+            from matplotlib.backend_bases import MouseButton
+            handler.data_axis_handler(x, y, MouseButton.RIGHT if right else MouseButton.LEFT)
+        except AttributeError:
+            pass
 
 
 __all__ = ['FigureWrapper']

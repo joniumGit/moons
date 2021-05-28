@@ -37,6 +37,7 @@ class PlotWidget(QWidget):
         layout.setSpacing(2)
         self.adjustments = AdjustmentWidget()
         self.adjustments.reload_btn.clicked.connect(self.reload_image)
+        self.adjustments.click.connect(self.fig.click)
 
         layout.addWidget(self.adjustments)
         layout.addWidget(self.frame)
@@ -86,7 +87,7 @@ class PlotWidget(QWidget):
             image,
             self.adjustments.get_image_normalize(),
             self.adjustments.get_br_package(),
-            self.adjustments.get_click_area(),
+            self.adjustments.get_click_area,
             restore=reload,
             **(self.get_config() or dict())
         )

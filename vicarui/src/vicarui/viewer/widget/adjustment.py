@@ -6,10 +6,14 @@ from PySide2.QtGui import QIntValidator
 from astropy.visualization import ImageNormalize, ZScaleInterval, HistEqStretch
 
 from ..helper import NW, CL
-from ...support import Busy
+from ...support import Busy, typedsignal
 
 
 class AdjustmentWidget(qt.QWidget):
+    click = typedsignal(tuple)
+    """
+    Tuple[float, float, bool] click event
+    """
 
     def __init__(self, *args, **kwargs):
         super(AdjustmentWidget, self).__init__(*args, **kwargs)
@@ -85,6 +89,42 @@ class AdjustmentWidget(qt.QWidget):
         layout.addWidget(click_width, alignment=NW)
         layout.addWidget(click_window, alignment=NW)
 
+        simulate_click1 = qt.QPushButton("L")
+        simulate_click2 = qt.QPushButton("R")
+        for btn in [simulate_click1, simulate_click2]:
+            btn.setFixedWidth(15)
+        simulate_click_x = qt.QLineEdit()
+        simulate_click_y = qt.QLineEdit()
+        simulate_click_x.setFixedWidth(60)
+        simulate_click_y.setFixedWidth(60)
+        simulate_click_x.setValidator(QIntValidator())
+        simulate_click_x.setValidator(QIntValidator())
+        simulate_click_x.setPlaceholderText("Click X")
+        simulate_click_y.setPlaceholderText("Click Y")
+        layout.addWidget(simulate_click_x)
+        layout.addWidget(simulate_click_y)
+        layout.addWidget(simulate_click1)
+        layout.addWidget(simulate_click2)
+
+        def __click(right: bool = False):
+            try:
+                x = float(simulate_click_x.text())
+                y = float(simulate_click_y.text())
+                self.click.emit((x, y, right))
+            except ValueError:
+                pass
+            except Exception as e:
+                from ...support import log
+                log.exception("Failed clock event", exc_info=e)
+
+        simulate_click1.clicked.connect(__click)
+        from functools import partial
+        simulate_click2.clicked.connect(partial(__click, right=True))
+
+        self.click_buttons = (simulate_click1, simulate_click2)
+        self.click_x = simulate_click_x
+        self.click_y = simulate_click_y
+
         click_width.setText(str(1))
         click_window.setText(str(100))
 
@@ -112,4 +152,4 @@ class AdjustmentWidget(qt.QWidget):
     def get_click_area(self) -> Tuple[int, int]:
         w = self.click_width.text().strip()
         wind = self.click_window.text().strip()
-        return int(w) if w != '' else 1, int(wind) if wind != '' else 1
+        return int(w) if w != '' else 0, int(wind) if wind != '' else 0
