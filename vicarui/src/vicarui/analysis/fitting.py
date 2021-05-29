@@ -36,8 +36,8 @@ def contrast_error_2nd_deg(bg: Pipe, fg: Pipe) -> Tuple[float, float]:
     """
     eq_err = np.sqrt(np.power(bg.base.errors, 2) + np.power(fg.base.errors, 2))
     x_err = [
-        np.divide(eq_err[1], np.power(eq_err[0], 2)) * eq_err[2],
-        np.reciprocal(eq_err[0]) * eq_err[1],
+        -0.5 * np.divide(eq_err[1], np.power(eq_err[0], 2)) * eq_err[0],
+        0.5 * np.reciprocal(eq_err[0]) * eq_err[1],
     ]
 
     x_err_sum: float = np.sum(np.abs(np.power([e * c for e, c in zip(eq_err[0:2], x_err)], 2)))
@@ -49,7 +49,7 @@ def contrast_error_2nd_deg(bg: Pipe, fg: Pipe) -> Tuple[float, float]:
     e_term = 0.5 * np.divide(eq_err[1], eq_err[0])
     c_err = [
         np.power(e_term, 2) * eq_err[0],
-        e_term * eq_err[1],
+        -e_term * eq_err[1],
         -0.25 * np.divide(np.power(eq_err[1], 2), eq_err[0]) + 1,
     ]
     c_err_sum: float = np.sum(np.abs(np.power([e * c for e, c in zip(eq_err, c_err)], 2)))
