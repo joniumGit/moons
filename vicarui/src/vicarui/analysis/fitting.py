@@ -50,7 +50,7 @@ def contrast_error_2nd_deg(bg: Pipe, fg: Pipe) -> Tuple[float, float]:
     c_err = [
         np.power(e_term, 2) * eq_err[0],
         -e_term * eq_err[1],
-        -0.25 * np.divide(np.power(eq_err[1], 2), eq_err[0]) + 1,
+        (-0.25 * np.divide(np.power(eq_err[1], 2), eq_err[0]) + 1) * eq_err[2],
     ]
     c_err_sum: float = np.sum(np.abs(np.power([e * c for e, c in zip(eq_err, c_err)], 2)))
     c_err_sum += 2 * c_err[0] * c_err[1] * (b_cov[0][1] + f_cov[0][1])  # a - b
