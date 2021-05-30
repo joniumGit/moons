@@ -37,7 +37,7 @@ def show(
     |/______________________ IMAGE
     """
     bore_angle = helper.bore_angle
-    dists: List[np.ndarray] = [px_to_km, px_to_km / np.cos(bore_angle)]
+    dists: List[np.ndarray] = [px_to_km, px_to_km / np.sin(bore_angle)]
     contrast, integral = (np.asarray([fit[i] for fit in fits]) for i in (0, 1))
 
     names = [CONTRAST_TARGET, INTEGRAL_TARGET, CONTRAST_SHADOW, INTEGRAL_SHADOW]
