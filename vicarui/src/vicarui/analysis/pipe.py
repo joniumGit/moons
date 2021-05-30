@@ -76,8 +76,10 @@ class Pipe:
     name: str = ""
     style: str = ""
     title: str = ""
+    enabled: bool = True
     reg: Union[RANSACRegressor, TransformedTargetRegressor, OLSWrapper] = field(default_factory=lambda: OLSWrapper())
     transforms: List[TransformerMixin] = field(default_factory=lambda: list())
+    to_string: str = "kab_str"
 
     @property
     def base(self) -> OLSWrapper:
@@ -125,7 +127,7 @@ class Pipe:
                 + "\n"
                   fr"$b: \, {sci_4(eq[2 if use_a else 1])}$"
                 + "\n"
-                  fr"err: $(" + ','.join([sci_4(x) for x in self.errors]) + ")$$\,"
+                  fr"err: $(" + ','.join([sci_4(x) for x in self.errors]) + r")$$\,"
         )
 
     @property

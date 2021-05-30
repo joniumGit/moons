@@ -144,34 +144,42 @@ class ImageHelper:
         return np.average(spice.bodvcd(self.target_id(), 'RADII', 3)[1])
 
     @cached_property
-    def shadow_angles(self):
+    def bore_angle(self) -> float:
+        """
+        Angle to bore in radians
+        """
+        inverse_bore = -Transformer(self.frame, SATURN_FRAME, self.time_et)(self.fbb[1])
+        sun_to_target = self.pos_in_sat(self.target_id(), SUN_ID)
+        return np.arccos(
+            np.dot(inverse_bore, sun_to_target)
+            / np.linalg.norm(inverse_bore)
+            / np.linalg.norm(sun_to_target)
+        )
+
+    @cached_property
+    def shadow_angles(self) -> Tuple[float, float, float]:
         """
         Shadow angle offset and shadow angle in image
 
         - Shadow angle from xy plane
         - Shadow angle in image
-        - Shadow angle to image plane at target
+        - Shadow angle to bore vector
         """
-        bore = -Transformer(self.frame, SATURN_FRAME, self.time_et)(self.fbb[1])
-        pos_raw = self.pos_in_sat(self.target_id(), SUN_ID)
-        pos_xy = np.asarray([*pos_raw[0:2], 0])
-        pos_frame = self.pos_in_frame(SUN_ID, self.target_id())[0:2]
+        sun_to_target = self.pos_in_sat(self.target_id(), SUN_ID)
+        sun_to_target_xy = np.asarray([*sun_to_target[0:2], 0])
+        sun_to_target_in_frame = self.pos_in_frame(SUN_ID, self.target_id())[0:2]
         return np.round(
             np.arccos(
-                np.dot(pos_raw, pos_xy)
-                / np.linalg.norm(pos_raw)
-                / np.linalg.norm(pos_xy)
+                np.dot(sun_to_target, sun_to_target_xy)
+                / np.linalg.norm(sun_to_target)
+                / np.linalg.norm(sun_to_target_xy)
             ) * spice.dpr(),
             7
         ), np.round(
-            np.arctan(pos_frame[1] / pos_frame[0]) * spice.dpr(),
+            np.arctan(sun_to_target_in_frame[1] / sun_to_target_in_frame[0]) * spice.dpr(),
             7
         ), np.round(
-            np.arccos(
-                np.dot(bore, pos_raw)
-                / np.linalg.norm(bore)
-                / np.linalg.norm(pos_raw)
-            ) * spiceypy.dpr(),
+            self.bore_angle * spiceypy.dpr(),
             7
         )
 

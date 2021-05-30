@@ -92,11 +92,11 @@ def auto(*_, image: ImageWrapper = None, **config):
                         [rect.get_x(), rect.get_x() + rect.get_width()],
                         [rect.get_y(), rect.get_y() + rect.get_height()],
                         color="blue",
-                        alpha=0.65
+                        alpha=0.3
                     )
                 else:
                     rect.set_color("blue")
-                    rect.set_alpha(0.65)
+                    rect.set_alpha(0.3)
                     ax.add_patch(rect)
                 yield t[1]
 

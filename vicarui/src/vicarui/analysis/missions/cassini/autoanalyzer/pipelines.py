@@ -1,6 +1,6 @@
 from sklearn.compose import TransformedTargetRegressor
 from sklearn.linear_model import RANSACRegressor
-from sklearn.preprocessing import FunctionTransformer
+from sklearn.preprocessing import FunctionTransformer, PolynomialFeatures
 
 from .classes import *
 from ..config import *
@@ -28,6 +28,7 @@ def get_pipes(fits: List[Fit]):
             ],
         ),
         Pipe(
+            enabled=False,
             name="log1p",
             color="magenta",
             style="-",
@@ -39,6 +40,17 @@ def get_pipes(fits: List[Fit]):
             )),
             transforms=[
                 FunctionTransformer(np.log1p, np.expm1)
+            ],
+        ),
+        Pipe(
+            name="polynomial reciprocal",
+            color="green",
+            style="-",
+            title=r"$\frac{k}{x^2} + \frac{a}{x} + b$""\n",
+            reg=make_sac(OLSWrapper()),
+            transforms=[
+                FunctionTransformer(np.reciprocal, np.reciprocal),
+                PolynomialFeatures(degree=2, include_bias=False)
             ],
         )
     ]
