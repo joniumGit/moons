@@ -110,7 +110,7 @@ class DataPacket(object):
         # BG
         bg = Pipe(
             transforms=[PolynomialFeatures(self.degree, include_bias=False)],
-            reg=ransac(min_samples=int(np.sqrt(len(y_out))))
+            reg=ransac(min_samples=int(np.sqrt(len(y_out))), max_iter=100)
         )
         pipe = bg.line.fit(x_out, y_out)
         pred_y_out = pipe.predict(nx_out[..., None])
