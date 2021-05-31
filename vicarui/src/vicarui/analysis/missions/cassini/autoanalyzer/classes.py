@@ -6,7 +6,7 @@ from ..config import *
 from ..funcs import norm
 from ..helpers import ImageHelper, Transformer
 from ....fitting import DataPacket
-from ....fitting import contrast_2nd_deg, integrate_2nd_deg
+from ....second_degree import contrast_2nd_deg, integrate_2nd_deg
 from ....wrapper import ImageWrapper
 
 

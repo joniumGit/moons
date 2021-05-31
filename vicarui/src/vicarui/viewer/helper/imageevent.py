@@ -27,7 +27,7 @@ class VicarEvent:
         self.cid = data_axis.figure.canvas.mpl_connect('button_press_event', self)
         self.dpkt = DataPacket(data)
 
-        self.outliers = None
+        self.outliers = list()
         self.rect = None
 
     def data_axis_handler(self, x: float, y: float, btn: MouseButton):
@@ -84,17 +84,34 @@ class VicarEvent:
 
         self.line_axis.add_line(d['FIT']['line'])
         self.line_axis.add_line(d['BG']['line'])
-        self.outliers = self.line_axis.scatter(d['BG']['out'][0], d['BG']['out'][1], c='white', s=4, marker='.')
-
+        self.outliers.append(
+            self.line_axis.scatter(
+                d['BG']['out'][0],
+                d['BG']['out'][1],
+                c='white',
+                s=4,
+                marker='.'
+            )
+        )
+        if 'out' in d['FIT']:
+            self.outliers.append(
+                self.line_axis.scatter(
+                    d['FIT']['out'][0],
+                    d['FIT']['out'][1],
+                    c='white',
+                    s=4,
+                    marker='.'
+                )
+            )
         self.line_axis.refresh()
 
     def __call__(self, event: MouseEvent):
         if event.canvas.cursor().shape() != 0:
             return
         if event.inaxes == self.line_axis and self.line_has_data:
-            if self.outliers:
-                self.outliers.remove()
-                self.outliers = None
+            for outlier in self.outliers:
+                outlier.remove()
+            self.outliers.clear()
             if event.button == MouseButton.LEFT and self.fit_x_start == -1 and self.fit_x_end == -1:
                 self.fit_x_start = event.xdata
                 self.line_axis.set_left(self.line_axis.get_first_left())
@@ -134,7 +151,7 @@ class VicarEvent:
         self.fit_x_start = -1
         self.fit_x_end = -1
         self.rect = None
-        self.outliers = None
+        self.outliers.clear()
 
     def detach(self):
         try:
