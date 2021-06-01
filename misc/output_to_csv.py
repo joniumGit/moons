@@ -17,6 +17,10 @@ def extract(s: str, marker: str, marker2: str = ','):
     return s.partition(marker)[2].partition(marker2)[0]
 
 
+def count(s: str):
+    return (s.count(',') - 1) // 2
+
+
 class Selection:
 
     def __init__(self, image_id: str):
@@ -37,12 +41,12 @@ class Selection:
         return f',{width},{window},{length},{shadow_radius},{init_pos},{target_pos},{vertical},{self.image_id}'
 
     def __len__(self):
-        return max(line.count(',') // 2 for line in self.lines)
+        return max(count(line) for line in self.lines)
 
     def str(self, n_features: int):
         return '\n'.join([
-            self.lines[0] + ("," * 2 * (n_features - self.lines[0].count(',') // 2)) + self.selection_data,
-            *[line + (',' * 2 * (n_features - line.count(',') // 2)) + (',' * 10) for line in self.lines[1:]]
+            self.lines[0] + ("," * 2 * (n_features - count(self.lines[0]))) + self.selection_data,
+            *[line + (',' * 2 * (n_features - count(line))) + (',' * 10) for line in self.lines[1:]]
         ])
 
 
@@ -59,7 +63,7 @@ for line in data_lines:
         current = None
     elif current is not None:
         try:
-            part = line.split(",", 3)[3].strip().replace(" ", "")
+            part = ','.join(line.split(",", 3)[1:4:2]).strip().replace(" ", "")
             if part != '':
                 current.lines.append(part)
         except (ValueError, IndexError):
@@ -72,7 +76,7 @@ except ValueError:
 
 max_features = max(len(selection) for selection in selections)
 header = (
-        "MSE,"
+        "TGT,MSE,"
         + ','.join([f'C{i},C{i}_ERR' for i in range(0, max_features)])
         + ',width,window,length,shadow radius,start x,start y,target x,target y,vertical,image'
 )
@@ -83,4 +87,10 @@ assert (
         header.count(',')
         == max(row.count(',') for row in rows.splitlines())
         == min(row.count(',') for row in rows.splitlines())
+), print(
+    f"""
+{header.count(',')}
+{max(count(row) for row in rows.splitlines())}
+{min(count(row) for row in rows.splitlines())}
+    """
 )
