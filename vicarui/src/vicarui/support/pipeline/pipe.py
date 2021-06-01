@@ -133,13 +133,16 @@ class Pipe:
     @property
     def poly_str(self) -> str:
         eq = self.eq
-        out = ' '.join(reversed([
+        out = "$"
+        out += ' '.join(reversed([
             sci_4(coef, plus_sign=True)
             + (fr" \cdot x^{idx} " if idx != 1 else r"\cdot x ")
             for idx, coef in enumerate(reversed(eq[:-1]), start=1)
         ]))
         out += f' {sci_4(eq[-1], plus_sign=True)}'
-        out += '$\n' r'$ \Delta_{std}(' + ','.join([sci_4(x) for x in self.errors]) + ")"
+        out += '$\n' r'$ \Delta^{coef}_{std}(' + ','.join([sci_4(x) for x in self.errors]) + ")"
+        out += r'$ $\Delta^{model}_{std}: '
+        out += f"{sci_4(np.sqrt(self.base.result_.scale))}$"
         return out
 
 

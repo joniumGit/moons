@@ -22,7 +22,7 @@ class Result:
 
 
 def reg_to_title(reg: Pipe, prefix: str) -> str:
-    return fr"{prefix} ${reg.poly_str}$"
+    return fr"{prefix} {reg.poly_str}"
 
 
 class DataPacket(object):
@@ -92,7 +92,7 @@ class DataPacket(object):
     def scatter(self, ax: Axes, **kwargs):
         ax.scatter(self.x_data, self.y_data, **kwargs)
 
-    def _collect_data(self, x_start: float, x_end: float):
+    def _collect_data(self, x_start: float, x_end: float) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         x_in = deque()
         y_in = deque()
         x_out = deque()
@@ -106,8 +106,8 @@ class DataPacket(object):
                 x_out.append(x)
                 y_out.append(y)
 
-        x_in = np.asarray(x_in)[..., None]
-        x_out = np.asarray(x_out)[..., None]
+        x_in = np.asarray(x_in)
+        x_out = np.asarray(x_out)
         y_in = np.asarray(y_in)
         y_out = np.asarray(y_out)
 
@@ -123,18 +123,22 @@ class DataPacket(object):
         return Pipe(transforms=[PolynomialFeatures(self.degree, include_bias=False)])
 
     def _pipes(self, x_start: float, x_end: float, full: bool = True) -> Union[
-        Tuple[Pipe, Pipe], Tuple[Pipe, Pipe, np.ndarray, np.ndarray, float, float, Tuple[np.ndarray, np.ndarray]]
+        Tuple[Pipe, Pipe, np.ndarray, np.ndarray, float, float, Tuple[np.ndarray, np.ndarray]],
+        Tuple[Pipe, Pipe],
     ]:
         x_in, x_out, y_in, y_out = self._collect_data(x_start, x_end)
 
         bg = self._bg(int(np.sqrt(len(y_out))))
         fg = self._fg()
-        bg.line.fit(x_out, y_out)
-        fg.line.fit(x_in, y_in)
+        bg.line.fit(x_out[..., None], y_out)
+        fg.line.fit(x_in[..., None], y_in)
 
         if full:
-            nx_out = np.linspace(x_out[0], x_out[-1], num=np.max(100, len(x_out) // 2))
-            num_in = np.max(100, len(x_in) // 2)
+            nx_out: np.ndarray
+            nx_in: np.ndarray
+
+            nx_out = np.linspace(x_out[0], x_out[-1], num=np.max((100, len(x_out) // 2)))
+            num_in = np.max((100, len(x_in) // 2))
             if self.degree == 2:
                 roots = roots_2nd_deg(bg.eq, fg.eq)
                 if len(roots) == 2 and np.alltrue(np.isreal(roots)):
@@ -144,11 +148,11 @@ class DataPacket(object):
             else:
                 nx_in = np.linspace(x_in[0], x_in[-1], num=num_in)
 
-            mse_bg = mean_squared_error(y_out, bg.line.predict(x_out))
-            mse_fg = mean_squared_error(y_in, bg.line.predict(x_in))
+            mse_bg = mean_squared_error(y_out, bg.line.predict(x_out[..., None]))
+            mse_fg = mean_squared_error(y_in, bg.line.predict(x_in[..., None]))
 
             outliers = np.logical_not(bg.reg.inlier_mask_)
-            outliers = (x_out[outliers], y_out[outliers])
+            outliers: Tuple[np.ndarray, np.ndarray] = (x_out[outliers], y_out[outliers])
 
             return bg, fg, nx_out, nx_in, mse_bg, mse_fg, outliers
         else:
@@ -174,6 +178,7 @@ class DataPacket(object):
             bg: Pipe
             fg: Pipe
             bg, fg, nx_out, nx_in, bg_mse, fg_mse, outliers = self._pipes(x_start, x_end)
+
             if self.degree == 2:
                 add, _ = additional_2nd_deg_info(bg, fg)
             else:
