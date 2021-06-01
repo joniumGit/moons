@@ -4,6 +4,7 @@ from PySide2 import QtWidgets as qt
 
 from ...analysis import get_additional_functions
 from ...support import Busy
+from ...logging import log
 
 
 def call_additional(name: str, provider: Callable[[], Dict]):
@@ -11,7 +12,6 @@ def call_additional(name: str, provider: Callable[[], Dict]):
         from ...analysis import anal_module
         getattr(anal_module(), name)(**provider())
     except (ImportError, AttributeError) as e:
-        from ...support import logging as log
         log.exception("Failed action", e)
 
 

@@ -5,8 +5,7 @@ import numpy as np
 from vicarutil.image import read_image
 
 from ..widget.filelist import FileListWidget
-from ...analysis import ImageWrapper
-from ...support import start_progress, stop_progress
+from ...support import start_progress, stop_progress, ImageWrapper
 
 
 def stack(flw: FileListWidget, paths: List[Path]) -> ImageWrapper:

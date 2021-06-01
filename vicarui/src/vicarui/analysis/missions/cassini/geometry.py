@@ -7,7 +7,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from .config import *
 from .entity import PlotPacket
 from .helpers import ImageHelper
-from ...kernels import load_kernels_for_image, release_kernels
+from ...common import load_kernels_for_image, release_kernels
 from ....support import non_modal
 
 

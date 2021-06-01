@@ -5,9 +5,7 @@ from typing import Any
 from ..config import *
 from ..funcs import norm
 from ..helpers import ImageHelper, Transformer
-from ....fitting import DataPacket
-from ....second_degree import contrast_2nd_deg, integrate_2nd_deg
-from ....wrapper import ImageWrapper
+from ....fitting import DataPacket, contrast_2nd_deg, integrate_2nd_deg
 
 
 @dataclass(frozen=False)
@@ -59,10 +57,9 @@ class AutoFit:
         return self.packet.select(x, y, vertical)
 
     def fit(self, x: float, y: float) -> Fit:
-        data = self.packet.fit(x, y, suppress=True)
-        bg = data['BG']['equation']
-        fg = data['FIT']['equation']
-
+        bg, fg = self.packet.fit(x, y, simple=True)
+        bg = bg.equation
+        fg = fg.equation
         x_val, contrast = contrast_2nd_deg(bg, fg)
         integral = integrate_2nd_deg(bg, fg)
         return Fit(

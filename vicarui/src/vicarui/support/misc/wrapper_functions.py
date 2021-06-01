@@ -1,7 +1,7 @@
 from functools import wraps
 from typing import Any
 
-from .logging import handle_exception, debug
+from ...logging import handle_exception, debug
 
 
 def invoke_safe(f):

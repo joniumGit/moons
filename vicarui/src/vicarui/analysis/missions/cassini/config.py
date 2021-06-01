@@ -7,9 +7,9 @@ import spiceypy as spice
 # noinspection PyUnresolvedReferences
 from vicarutil.image import VicarImage
 
-from ...internal import log as parent_logger
 # noinspection PyUnresolvedReferences
-from ...wrapper import ImageWrapper
+from ....support import ImageWrapper
+from ...internal import log as parent_logger
 
 log = parent_logger.getChild("cas")
 log.debug('Initializing SPICE: %s' + spice.tkvrsn('TOOLKIT'))

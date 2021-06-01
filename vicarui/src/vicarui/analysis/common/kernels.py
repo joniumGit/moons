@@ -3,7 +3,7 @@ import os
 import spiceypy as spice
 from vicarutil.image import VicarImage
 
-from .internal import log
+from ..internal import log
 
 META_KERNEL: str
 KERNEL_BASE: str
@@ -37,3 +37,6 @@ def release_kernels():
         spice.kclear()
     except Exception as e:
         log.critical("Failed to unload kernel!", exc_info=e)
+
+
+__all__ = ['provide_kernels', 'load_kernels_for_image', 'release_kernels']

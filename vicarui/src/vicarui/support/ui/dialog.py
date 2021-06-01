@@ -3,7 +3,7 @@ from typing import NoReturn
 from PySide2.QtCore import Qt
 from PySide2.QtWidgets import QDialog
 
-from .concurrent import Lock
+from ..concurrent import Lock
 
 _dialogs = list()
 _lock = Lock()

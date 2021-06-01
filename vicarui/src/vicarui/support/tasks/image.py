@@ -1,11 +1,11 @@
 from pathlib import Path
-from typing import NoReturn
+from typing import NoReturn, Dict
 
 from PySide2.QtCore import QThread
 from vicarutil.image import read_image
 
-from ..concurrent import typedsignal
-from ...analysis.wrapper import ImageWrapper
+from ..concurrent import typedsignal, signal
+from ..misc import ImageWrapper
 
 
 class ReadTask(QThread):
@@ -22,4 +22,26 @@ class ReadTask(QThread):
         self.quit()
 
 
-__all__ = ['ReadTask']
+class BRTask(QThread):
+    done = signal()
+
+    def __init__(self, image: ImageWrapper, br_config: Dict):
+        super(BRTask, self).__init__()
+        self._image = image
+        self.br_config = br_config
+
+    def run(self) -> NoReturn:
+        from ...analysis import br_reduction
+        image = self._image
+        image.border = self.br_config['border']
+        if self.br_config['reduce']:
+            image.active = True
+            br_reduction(image, degree=self.br_config['degree'])
+        else:
+            image.active = False
+        image.normalized = self.br_config['normalize']
+        self.done.emit()
+        self.quit()
+
+
+__all__ = ['ReadTask', 'BRTask']

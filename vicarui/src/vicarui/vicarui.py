@@ -8,7 +8,7 @@ def new_ui_entry(ns: argparse.Namespace):
 
 
 def old_ui_entry(_: argparse.Namespace):
-    from .old_viewer import ui
+    from .viewer_old import ui
     ui.run()
 
 

@@ -2,8 +2,8 @@ import numpy as np
 from sklearn.compose import TransformedTargetRegressor
 from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import PolynomialFeatures
-from vicarui.analysis.fitting import integrate_2nd_deg, contrast_2nd_deg, roots_2nd_deg, Pipe
-from vicarui.analysis.pipe import OLSWrapper
+from vicarui.analysis.fitting.second_degree import integrate_2nd_deg, contrast_2nd_deg, roots_2nd_deg
+from vicarui.support.pipeline import OLSWrapper, Pipe
 
 eq1 = np.asarray([0, 0, 0])
 eq2 = np.asarray([1, -4, 0])

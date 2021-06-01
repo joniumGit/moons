@@ -8,8 +8,8 @@ import numpy as np
 from PySide2.QtCore import QThread
 
 from ..concurrent import typedsignal, signal
-from ..logging import handle_exception
-from ..progress import Progress
+from ...logging import handle_exception
+from ..ui import Progress
 
 _T = TypeVar('_T')
 

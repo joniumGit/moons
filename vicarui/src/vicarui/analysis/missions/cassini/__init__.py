@@ -1,8 +1,8 @@
+from .autoanalyzer import auto
 from .config import get_config
 from .geometry import view_geometry
 from .labels import view_labels
 from .set_info import set_info
-from .autoanalyzer import auto
 
 
 def get_additional_functions():

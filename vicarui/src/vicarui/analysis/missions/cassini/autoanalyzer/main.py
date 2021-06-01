@@ -14,10 +14,8 @@ from .definition import *
 from .show import show
 from ..config import *
 from ..helpers import ImageHelper
-from ....kernels import load_kernels_for_image, release_kernels
-from ....tex import sci_2
-from ....wrapper import ImageWrapper
-from .....support import modal
+from ....common import load_kernels_for_image, release_kernels
+from .....support import modal, sci_2
 
 
 def auto(*_, image: ImageWrapper = None, **config):

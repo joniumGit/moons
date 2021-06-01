@@ -9,7 +9,7 @@ from sklearn.pipeline import make_pipeline, Pipeline
 from statsmodels.api import add_constant
 from statsmodels.regression.linear_model import RegressionResults, RegressionModel, OLS
 
-from .tex import sci_4
+from ..tex import sci_4
 
 
 def ine(o, d):

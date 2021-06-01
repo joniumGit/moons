@@ -3,6 +3,7 @@ from typing import Optional, Dict
 from PySide2 import QtWidgets as qt
 
 from ...analysis import get_config
+from ...logging import log
 
 
 class ConfigBtn(qt.QPushButton):
@@ -94,7 +95,6 @@ class ConfigBtn(qt.QPushButton):
                     else:
                         values[k] = None
                 except ValueError as e:
-                    from ...support import logging as log
                     log.exception("Failed a config value", exc_info=e)
                     values[k] = None
 

@@ -10,7 +10,6 @@ def e(s: str):
         return "nan"
 
 
-
 def sci_2(val: float, plus_sign: bool = False) -> str:
     return ('+' if plus_sign and val > 0 else '') + e(f"{val:.2e}")
 

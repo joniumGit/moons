@@ -7,7 +7,8 @@ from typing import Optional
 import matplotlib
 from PySide2 import QtWidgets as qt
 
-from .support import info, debug, invoke_safe, init_logging
+from .logging import info, debug, init_logging
+from .support import invoke_safe
 from .viewer import AppWindow
 
 pr: Optional[profile.Profile] = None

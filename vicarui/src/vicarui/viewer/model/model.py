@@ -1,7 +1,8 @@
 from pathlib import Path
 from typing import Dict, List, Optional, Callable
 
-from ...support import info, invoke_safe, FileType
+from ...logging import info
+from ...support import invoke_safe, FileType
 
 
 # Not used anymore

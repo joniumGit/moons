@@ -1,4 +1,4 @@
-from ..support import child
+from ...logging import child
 
 log = child("analysis")
 

@@ -1,8 +1,8 @@
 from .config import *
 from .funcs import norm
 from .helpers import ImageHelper, Transformer
-from ...kernels import load_kernels_for_image, release_kernels
-from ...tex import sci_2
+from ...common import load_kernels_for_image, release_kernels
+from ....support import sci_2
 
 
 def set_info(
@@ -60,7 +60,7 @@ def set_info(
 
                 try:
                     from matplotlib.ticker import AutoMinorLocator
-                    from ....support.mpl import MPL_FONT_CONFIG
+                    from ....support.misc import MPL_FONT_CONFIG
 
                     second_x = ax.secondary_xaxis(location=1.07, functions=helper.size_x_transforms)
                     second_y = ax.secondary_yaxis(location=1.07, functions=helper.size_y_transforms)

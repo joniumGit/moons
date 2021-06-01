@@ -8,31 +8,9 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 
 from .imageevent import VicarEvent
-from ...analysis import ImageWrapper, set_info
-from ...support import logging as log
-from ...support import stop_progress, start_progress, signal
-
-
-class BRTask(QThread):
-    done = signal()
-
-    def __init__(self, image: ImageWrapper, br_pack: Dict):
-        super(BRTask, self).__init__()
-        self._image = image
-        self._br_pack = br_pack
-
-    def run(self) -> None:
-        from ...analysis import br_reduction
-        image = self._image
-        image.border = self._br_pack['border']
-        if self._br_pack['reduce']:
-            image.active = True
-            br_reduction(image, degree=self._br_pack['degree'])
-        else:
-            image.active = False
-        image.normalized = self._br_pack['normalize']
-        self.done.emit()
-        self.quit()
+from ...analysis import set_info
+from ...logging import log
+from ...support import stop_progress, start_progress, signal, BRTask, ImageWrapper
 
 
 class FigureWrapper(FigureCanvasQTAgg):

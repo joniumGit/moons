@@ -4,7 +4,7 @@ from sklearn.preprocessing import FunctionTransformer, PolynomialFeatures
 
 from .classes import *
 from ..config import *
-from ....pipe import Pipe, OLSWrapper
+from .....support import Pipe, OLSWrapper
 
 
 def get_pipes(fits: List[Fit]):

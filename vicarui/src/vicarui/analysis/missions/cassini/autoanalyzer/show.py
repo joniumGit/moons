@@ -9,7 +9,7 @@ from .definition import *
 from .pipelines import get_pipes
 from ..config import *
 from ..helpers import ImageHelper
-from ....tex import sci_4
+from .....support import sci_4
 
 
 def show(

@@ -5,7 +5,8 @@ from matplotlib.axes import Axes
 from matplotlib.backend_bases import MouseEvent, MouseButton
 
 from ...analysis import DataPacket
-from ...support import log
+from ...logging import log
+from ...support import sci_4
 
 
 class VicarEvent:
@@ -68,7 +69,7 @@ class VicarEvent:
         self.data_axis.refresh()
 
     def _fit(self):
-        d = self.dpkt.fit(
+        bg, fg = self.dpkt.fit(
             self.fit_x_start,
             self.fit_x_end,
             in_kwargs={'color': 'black', 'linewidth': 3},
@@ -76,28 +77,30 @@ class VicarEvent:
         )
 
         self.line_axis.append_left(
-            d['FIT']['title']
-            + fr' mse: {d["FIT"]["mse"]}'
+            fg.title
+            + fr' mse: ${sci_4(fg.mse)}$'
+            + fg.additional
             + '\n'
-            + d['BG']['title'] + fr' mse: {d["BG"]["mse"]}'
+            + bg.title
+            + fr' mse: ${sci_4(bg.mse)}$'
+            + bg.additional
         )
 
-        self.line_axis.add_line(d['FIT']['line'])
-        self.line_axis.add_line(d['BG']['line'])
-        self.outliers.append(
-            self.line_axis.scatter(
-                d['BG']['out'][0],
-                d['BG']['out'][1],
-                c='white',
-                s=4,
-                marker='.'
-            )
-        )
-        if 'out' in d['FIT']:
+        self.line_axis.add_line(fg.line)
+        self.line_axis.add_line(bg.line)
+        if bg.outliers is not None:
             self.outliers.append(
                 self.line_axis.scatter(
-                    d['FIT']['out'][0],
-                    d['FIT']['out'][1],
+                    *bg.outliers,
+                    c='white',
+                    s=4,
+                    marker='.'
+                )
+            )
+        if fg.outliers is not None:
+            self.outliers.append(
+                self.line_axis.scatter(
+                    *fg.outliers,
                     c='white',
                     s=4,
                     marker='.'

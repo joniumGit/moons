@@ -130,3 +130,6 @@ class ImageWrapper(object):
     @outliers.setter
     def outliers(self, outliers: np.ndarray):
         self._bg_outliers = outliers
+
+
+__all__ = ['ImageWrapper']

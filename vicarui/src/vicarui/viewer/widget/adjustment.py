@@ -7,6 +7,7 @@ from astropy.visualization import ImageNormalize, ZScaleInterval, HistEqStretch
 
 from ..helper import NW, CL
 from ...support import Busy, typedsignal
+from ...logging import log
 
 
 class AdjustmentWidget(qt.QWidget):
@@ -114,7 +115,6 @@ class AdjustmentWidget(qt.QWidget):
             except ValueError:
                 pass
             except Exception as e:
-                from ...support import log
                 log.exception("Failed clock event", exc_info=e)
 
         simulate_click1.clicked.connect(__click)

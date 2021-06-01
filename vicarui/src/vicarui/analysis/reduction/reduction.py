@@ -5,9 +5,8 @@ from sklearn.metrics import mean_squared_error
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import PolynomialFeatures
 
-from .pipe import ransac, OLSWrapper
-from .wrapper import ImageWrapper
-from ..support import info
+from ...logging import handle_exception, info
+from ...support import OLSWrapper, ransac, ImageWrapper
 
 
 def br_reduction(
@@ -85,7 +84,6 @@ def br_reduction(
                 f"\n- Errors:     {str(est.errors).replace(n, '')}"
             )
     except Exception as e:
-        from ..support import handle_exception
         handle_exception(e)
         image.active = False
         image.normalized = False

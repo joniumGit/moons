@@ -5,7 +5,8 @@ from PySide2 import QtWidgets as qt
 from PySide2.QtGui import QStandardItem, QStandardItemModel, QMouseEvent
 
 from ..helper import C
-from ...support import debug, invoke_safe, handle_exception, typedsignal, SimpleSignal, FileTask, Tasker, Busy
+from ...logging import handle_exception, debug
+from ...support import invoke_safe, typedsignal, SimpleSignal, FileTask, Tasker, Busy
 
 _T = TypeVar('_T')
 

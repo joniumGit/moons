@@ -9,8 +9,8 @@ from .additionalbtn import AdditionalBtn
 from .adjustment import AdjustmentWidget
 from .configbtn import ConfigBtn
 from ..helper import FigureWrapper, E
-from ...analysis import ImageWrapper, register_mission_listener
-from ...support import Progress, signal, Busy, ReadTask
+from ...analysis import register_mission_listener
+from ...support import Progress, signal, Busy, ReadTask, ImageWrapper
 
 
 class PlotWidget(QWidget):
