@@ -69,7 +69,7 @@ def show(
                         + pipe.name
                         + ","
                         + ",".join(
-                            (f"{v:.4e}" for v in [*pipe.eq, mse]))
+                            (f"{v:.4e}" for v in [mse, *np.asarray([t for t in zip(pipe.eq, pipe.errors)]).ravel()]))
                     )
                     ax.plot(
                         x_[:, 0], y,

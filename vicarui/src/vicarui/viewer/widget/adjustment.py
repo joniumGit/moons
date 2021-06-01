@@ -22,11 +22,11 @@ class AdjustmentWidget(qt.QWidget):
         self.setFixedHeight(35)
 
         br_toggle = qt.QCheckBox(text="Background Reduction")
-        br_toggle.setChecked(True)
+        br_toggle.setChecked(False)
         self.br_toggle = br_toggle
 
         normal_toggle = qt.QCheckBox(text="Normalization")
-        normal_toggle.setChecked(True)
+        normal_toggle.setChecked(False)
         self.normal_toggle = normal_toggle
 
         degree_label = qt.QLabel(text="Degree")

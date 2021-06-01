@@ -27,8 +27,13 @@ def stack(flw: FileListWidget, paths: List[Path]) -> ImageWrapper:
             for line in img.data[0]:
                 if np.alltrue(np.isclose(line, np.average(line))):
                     line.fill(np.NINF)
-        data = np.asarray([img.data / len(images) for img in images])
-        image.data = np.sum(data, axis=0, dtype='float64', where=np.isfinite(data))
+        data = np.asarray([img.data[0] for img in images])
+        data = data - np.ma.mean(np.ma.masked_where(data, np.logical_not(np.isfinite(data))), keepdims=True, axis=0).data
+        image.data = np.asarray([np.average(
+            data,
+            axis=0,
+            weights=[float(img.labels['INSTRUMENT']['EXPOSURE_DURATION']) for img in images]
+        )])
         flw.busy = False
         stop_progress()
         return ImageWrapper(image)

@@ -145,9 +145,12 @@ def auto(*_, image: ImageWrapper = None, **config):
             clear_subs()
             ax.imshow()
             ax.get_images()[0].set_clim(clim)
+            s = to_selection(vertical)
+            log.info(f'ID: {helper.im_helper.id}')
+            log.info(f'Selection: {s}')
             show(
                 helper.im_helper,
-                rect_intercept(helper(to_selection(vertical))),
+                rect_intercept(helper(s)),
                 plots
             )
             agg.draw()
