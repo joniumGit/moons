@@ -6,7 +6,7 @@ from .adapter_interface import WrapperRegressor
 from ..tex import sci_4
 
 
-def _f(x, A, k) -> np.ndarray:
+def _f(x, k, A) -> np.ndarray:
     return A * np.float_power(x, k)
 
 
@@ -39,7 +39,7 @@ class Powerlaw(WrapperRegressor):
         return self
 
     def predict(self, X, y=None):
-        return self.coef_[0] * np.float_power(X[:, 0], self.coef_[1])
+        return self.coef_[1] * np.float_power(X[:, 0], self.coef_[0])
 
     @property
     def intercept_(self):
@@ -57,7 +57,7 @@ class Powerlaw(WrapperRegressor):
 
     def __str__(self):
         return (
-            f"$A:\\,{sci_4(self.coef_[0])}$\n$k:\\,{sci_4(self.coef_[1])}$"
+            f"$k:\\,{sci_4(self.coef_[0])}$\n$A:\\,{sci_4(self.coef_[1])}$"
             "\n$\\Delta_{coef}"
             f"({','.join(sci_4(err) for err in self.errors_)})$"
         )
