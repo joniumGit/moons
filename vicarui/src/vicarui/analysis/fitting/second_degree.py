@@ -3,7 +3,7 @@ from typing import Tuple
 import numpy as np
 
 from ..internal import log
-from ...support import Pipe, sci_4
+from ...support import SMPipe, sci_4
 
 
 def roots_2nd_deg(eq1: np.ndarray, eq2: np.ndarray):
@@ -15,7 +15,7 @@ def roots_2nd_deg(eq1: np.ndarray, eq2: np.ndarray):
     return -np.sort(-np.roots(eq1 - eq2))
 
 
-def error_estimate_for_y(bg: Pipe, fg: Pipe):
+def error_estimate_for_y(bg: SMPipe, fg: SMPipe):
     """
     Trying to combine the standard errors of estimates of teh two models
 
@@ -64,21 +64,25 @@ def integrate_2nd_deg(eq1: np.ndarray, eq2: np.ndarray) -> float:
     return np.NAN
 
 
-def contrast_error_2nd_deg(bg: Pipe, fg: Pipe) -> float:
+def contrast_error_2nd_deg(bg: SMPipe, fg: SMPipe) -> float:
     """
     Evaluates the maximum error for x, and contrast
     """
     return error_estimate_for_y(bg, fg)
 
 
-def integral_error_2nd_deg(start: float, end: float, contrast_error: float) -> float:
+def integral_error_2nd_deg(bg: SMPipe, fg: SMPipe, contrast_error: float = None) -> float:
     """
     Evaluates the maximum error for the integral
     """
-    return np.abs(end - start) * contrast_error
+    roots = roots_2nd_deg(bg.eq, fg.eq)
+    if contrast_error is None:
+        return np.abs(roots[0] - roots[1]) * contrast_error_2nd_deg(bg, fg)
+    else:
+        return np.abs(roots[0] - roots[1]) * contrast_error
 
 
-def additional_2nd_deg_info(bg: Pipe, fg: Pipe) -> Tuple[str, np.ndarray]:
+def additional_2nd_deg_info(bg: SMPipe, fg: SMPipe) -> Tuple[str, np.ndarray]:
     eq1 = bg.eq
     eq2 = fg.eq
     roots = roots_2nd_deg(eq1, eq2)
@@ -88,7 +92,7 @@ def additional_2nd_deg_info(bg: Pipe, fg: Pipe) -> Tuple[str, np.ndarray]:
         integral = integrate_2nd_deg(eq1, eq2)
 
         contrast_error = contrast_error_2nd_deg(bg, fg)
-        integral_error = (roots[0] - roots[1]) * contrast_error
+        integral_error = np.abs(roots[0] - roots[1]) * contrast_error
 
         newline = '\n'
 

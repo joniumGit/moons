@@ -3,7 +3,7 @@ from sklearn.compose import TransformedTargetRegressor
 from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import PolynomialFeatures
 from vicarui.analysis.fitting.second_degree import integrate_2nd_deg, contrast_2nd_deg, roots_2nd_deg
-from vicarui.support.pipeline import OLSWrapper, Pipe
+from vicarui.support.pipeline import SMAdapter, Pipe
 
 eq1 = np.asarray([0, 0, 0])
 eq2 = np.asarray([1, -4, 0])
@@ -46,7 +46,7 @@ def test_re_to_eq():
 
     p = Pipe(
         reg=TransformedTargetRegressor(
-            regressor=OLSWrapper(),
+            regressor=SMAdapter(),
         ),
         transforms=[
             PolynomialFeatures(degree=1, include_bias=False)
@@ -73,3 +73,20 @@ def test_re_to_eq():
         predicted,
         np.polyval(np.polyfit(x, y, 1), np.arange(0, 6))
     ).all()
+
+
+def test_plaw():
+    from vicarui.support import Powerlaw
+
+    def fun(x):
+        return 4.1 * x ** 2.1
+
+    x = np.linspace(1, 1000)
+    y = fun(x)
+    y_err = np.random.normal(0., 0.2, len(x))
+
+    pl = Powerlaw()
+    pl.fit(x[..., None], y + y_err)
+    print(f"Coeff: {pl.coef_}")
+    print(f"True: 4.1, 2.1")
+    assert np.isclose(pl.coef_[0], 4.1) and np.isclose(pl.coef_[1], 2.1)

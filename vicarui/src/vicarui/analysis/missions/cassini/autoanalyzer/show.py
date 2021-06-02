@@ -38,9 +38,26 @@ def show(
     """
     bore_angle = helper.bore_angle
     dists: List[np.ndarray] = [px_to_km, px_to_km / np.sin(bore_angle)]
-    contrast, integral = (np.asarray([fit[i] for fit in fits]) for i in (0, 1))
+
+    contrast = np.asarray([fit.contrast for fit in fits])
+    c_error = np.asarray([fit.contrast_error for fit in fits])
+    integral = np.asarray([fit.integral for fit in fits])
+    i_error = np.asarray([fit.integral_error for fit in fits])
 
     names = [CONTRAST_TARGET, INTEGRAL_TARGET, CONTRAST_SHADOW, INTEGRAL_SHADOW]
+    canvas_ = None
+    for tget in names:
+        data_ = contrast if 'c' in tget else integral
+        dist_ = dists[0] if 'tg' in tget else dists[1]
+        err_ = c_error if 'c' in tget else i_error
+        ax: Axes = plots[tget]
+        ax.scatter(dist_, data_, facecolors="gray", s=4, alpha=0.6, edgecolors="none")
+        ax.fill_between(dist_, data_ - err_, data_ + err_, color="gray", alpha=0.1)
+        if canvas_ is None:
+            canvas_ = ax.figure.canvas
+    canvas_.draw()
+    canvas_.flush_events()
+
     from warnings import catch_warnings, filterwarnings
     with catch_warnings():
         filterwarnings('ignore', r'.*R.*')
@@ -48,20 +65,23 @@ def show(
             if not pipe.enabled:
                 continue
             for tget in names:
-
                 data_ = contrast if 'c' in tget else integral
                 dist_ = dists[0] if 'tg' in tget else dists[1]
                 x_ = np.linspace(np.min(dist_), np.max(dist_), num=256)[..., None]
-
                 ax: Axes = plots[tget]
-                ax.scatter(dist_, data_, facecolors="gray", s=4, alpha=0.6, edgecolors="none")
-
                 try:
                     dist_ = dist_[..., None]
-                    pipe.line.fit(dist_, data_)
+                    if pipe.needs_errors:
+                        err_ = c_error if 'c' in tget else i_error
+                        pipe.line.fit(dist_, data_, **{pipe.line.steps[-1][0] + "__sample_weight": err_})
+                    else:
+                        pipe.line.fit(dist_, data_)
                     y: np.ndarray = pipe.line.predict(x_)
                     pred = pipe.line.predict(dist_)
-                    mse = mean_squared_error(data_, pred)
+                    try:
+                        mse = mean_squared_error(data_, pred)
+                    except ValueError:
+                        mse = np.inf
                     log.info(
                         "FIT,"
                         + tget
@@ -69,16 +89,16 @@ def show(
                         + pipe.name
                         + ","
                         + ",".join(
-                            (f"{v:.4e}" for v in [mse, *np.asarray([t for t in zip(pipe.eq, pipe.errors)]).ravel()]))
+                            (f"{v:.4e}" for v in [mse, *np.asarray([t for t in zip(pipe.eq, pipe.errors)]).ravel()])
+                        )
                     )
                     ax.plot(
                         x_[:, 0], y,
                         color=pipe.color,
                         linestyle=pipe.style,
-                        label=fr"{pipe.title}$\, mse: {sci_4(mse)} \, {getattr(pipe, pipe.to_string)}$"
+                        label=f"\n{pipe.title}\n$mse:\\,{sci_4(mse)}$\n{pipe}"
                     )
                     ax.legend()
-
                     try:
                         if hasattr(pipe.reg, 'inlier_mask_'):
                             ax.scatter(
@@ -90,19 +110,12 @@ def show(
                                 zorder=3,
                                 facecolors='none'
                             )
-                            ax.set_ylim(np.min(data_[pipe.reg.inlier_mask_]), np.max(data_[pipe.reg.inlier_mask_]))
-                        else:
-                            ax.set_ylim(np.percentile(data_, 1), np.percentile(data_, 95))
-                        pass
                     except ValueError:
                         pass
-
-                except ValueError:
-                    log.exception("Failed a regression analysis")
-
+                except Exception as e:
+                    log.exception("Failed a regression analysis", exc_info=e)
                 ax.figure.canvas.draw()
                 ax.figure.canvas.flush_events()
-
     log.info("done")
 
 

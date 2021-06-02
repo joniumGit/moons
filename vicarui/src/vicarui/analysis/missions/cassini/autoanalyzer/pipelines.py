@@ -1,14 +1,15 @@
+import statsmodels.api as sm
 from sklearn.compose import TransformedTargetRegressor
 from sklearn.linear_model import RANSACRegressor
 from sklearn.preprocessing import FunctionTransformer, PolynomialFeatures
 
 from .classes import *
 from ..config import *
-from .....support import Pipe, OLSWrapper
+from .....support import Pipe, SMAdapter, Powerlaw, PipeStr, partial_cls
 
 
 def get_pipes(fits: List[Fit]):
-    def make_sac(base, max_trials=1000):
+    def make_sac(base, max_trials=500):
         return RANSACRegressor(
             random_state=0,
             max_trials=max_trials,
@@ -18,45 +19,94 @@ def get_pipes(fits: List[Fit]):
 
     return [
         Pipe(
-            name="reciprocal",
+            enabled=False,
+            name="rec",
             color="blue",
             style="-",
-            title=r"$\frac{k}{x} + b$""\n",
-            reg=make_sac(OLSWrapper()),
+            title=r"$\frac{k}{x} + B$",
+            reg=make_sac(SMAdapter()),
             transforms=[
                 FunctionTransformer(np.reciprocal, np.reciprocal),
             ],
         ),
         Pipe(
             enabled=False,
-            name="log1p",
-            color="magenta",
+            name="kox",
+            color="blue",
             style="-",
-            title=r"$\log y = k\log x + b$""\n",
-            reg=make_sac(TransformedTargetRegressor(
-                regressor=OLSWrapper(),
-                func=np.log1p,
-                inverse_func=np.expm1
-            )),
+            title=r"$\frac{k}{x}$""\n",
+            reg=make_sac(SMAdapter(fit_intercept=False)),
             transforms=[
-                FunctionTransformer(np.log1p, np.expm1)
+                FunctionTransformer(np.reciprocal, np.reciprocal),
             ],
         ),
         Pipe(
-            name="polynomial reciprocal",
+            enabled=True,
+            name="ln-sac",
+            color="magenta",
+            style="-",
+            title=r"$y = \exp(A) \cdot x^k$ (ln, ransac)",
+            reg=make_sac(TransformedTargetRegressor(
+                regressor=make_sac(SMAdapter()),
+                func=np.log,
+                inverse_func=np.exp
+            )),
+            transforms=[
+                FunctionTransformer(np.log, np.exp)
+            ],
+            display_style=PipeStr.LINEARIZED_POWERLAW
+        ),
+        Pipe(
+            enabled=False,
+            name="ln-rls",
+            color="magenta",
+            style="-",
+            title=r"$\log y = k\cdot\log x$ RLM",
+            reg=TransformedTargetRegressor(
+                regressor=SMAdapter(model_cls=partial_cls(sm.RLM, M=sm.robust.norms.HuberT())),
+                func=np.log,
+                inverse_func=np.exp
+            ),
+            transforms=[
+                FunctionTransformer(np.log, np.exp)
+            ],
+        ),
+        Pipe(
+            enabled=False,
+            name="poly-rec",
             color="green",
             style="-",
-            title=r"$\frac{k}{x^2} + \frac{a}{x} + b$""\n",
-            reg=make_sac(OLSWrapper()),
+            title=r"$\frac{k}{x^2} + \frac{a}{x} + B$",
+            reg=make_sac(SMAdapter()),
             transforms=[
                 FunctionTransformer(np.reciprocal, np.reciprocal),
                 PolynomialFeatures(degree=2, include_bias=False)
             ],
-        )
+        ),
+        Pipe(
+            enabled=True,
+            name="pwr",
+            color="cyan",
+            style="-",
+            title=r"$y = A \cdot x^k$ (Weighted)",
+            reg=Powerlaw(max_iter=500),
+            display_style=PipeStr.DELEGATE,
+            needs_errors=True
+        ),
+        Pipe(
+            enabled=False,
+            name="pwr",
+            color="cyan",
+            style="-",
+            title=r"$y = A \cdot x^k$",
+            reg=Powerlaw(max_iter=1500),
+            display_style=PipeStr.DELEGATE,
+            needs_errors=False
+        ),
     ]
 
 
 __all__ = [
     'get_pipes',
-    'Pipe'
+    'Pipe',
 ]

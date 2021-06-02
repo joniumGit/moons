@@ -1,3 +1,6 @@
+import numpy as np
+
+
 def e(s: str):
     part = s.split('e')
     try:
@@ -10,13 +13,23 @@ def e(s: str):
         return "nan"
 
 
+def sci_n(val: float, precision: int, plus_sign: bool = False) -> str:
+    return (
+            (
+                '+'
+                if plus_sign and val > 0
+                else ''
+            ) + e(("{0:." + str(precision) + "e}").format(val))
+    ) if np.isfinite(val) else "nan"
+
+
 def sci_2(val: float, plus_sign: bool = False) -> str:
-    return ('+' if plus_sign and val > 0 else '') + e(f"{val:.2e}")
+    return sci_n(val, 2, plus_sign)
 
 
 def sci_4(val: float, plus_sign: bool = False) -> str:
-    return ('+' if plus_sign and val > 0 else '') + e(f"{val:.4e}")
+    return sci_n(val, 4, plus_sign)
 
 
 def sci_5(val: float, plus_sign: bool = False) -> str:
-    return ('+' if plus_sign and val > 0 else '') + e(f"{val:.5e}")
+    return sci_n(val, 5, plus_sign)

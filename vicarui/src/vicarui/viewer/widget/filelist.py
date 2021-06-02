@@ -6,7 +6,7 @@ from PySide2.QtGui import QStandardItem, QStandardItemModel, QMouseEvent
 
 from ..helper import C
 from ...logging import handle_exception, debug
-from ...support import invoke_safe, typedsignal, SimpleSignal, FileTask, Tasker, Busy
+from ...support import invoke_safe, typedsignal, SimpleSignal, FileTask, Tasker, Busy, SortType
 
 _T = TypeVar('_T')
 
@@ -118,7 +118,7 @@ class FileListWidget(qt.QWidget):
         item_label = Label("Image files")
         item_view = qt.QTreeView()
         sort_selection = qt.QComboBox()
-        sort_selection.addItems(FileTask.Sort.SELECTIONS[::-1])
+        sort_selection.addItems(list(item.value for item in SortType))
         sort_selection.setEditable(False)
         self.sort_selection = sort_selection
 

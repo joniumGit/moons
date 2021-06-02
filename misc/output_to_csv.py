@@ -45,8 +45,7 @@ class Selection:
 
     def str(self, n_features: int):
         return '\n'.join([
-            self.lines[0] + ("," * 2 * (n_features - count(self.lines[0]))) + self.selection_data,
-            *[line + (',' * 2 * (n_features - count(line))) + (',' * 10) for line in self.lines[1:]]
+            line + ("," * 2 * (n_features - count(line))) + self.selection_data for line in self.lines
         ])
 
 
@@ -63,7 +62,7 @@ for line in data_lines:
         current = None
     elif current is not None:
         try:
-            part = ','.join(line.split(",", 3)[1:4:2]).strip().replace(" ", "")
+            part = line.split(",", 1)[1].strip().replace(" ", "")
             if part != '':
                 current.lines.append(part)
         except (ValueError, IndexError):
@@ -76,11 +75,24 @@ except ValueError:
 
 max_features = max(len(selection) for selection in selections)
 header = (
-        "TGT,MSE,"
+        "TGT,MODEL,MSE,"
         + ','.join([f'C{i},C{i}_ERR' for i in range(0, max_features)])
         + ',width,window,length,shadow radius,start x,start y,target x,target y,vertical,image'
 )
+rls = [[len(s) for s in row.split(',')] for row in selections[0].str(max_features).splitlines()]
+rls.append([len(s) for s in header.split(',')])
+rls = ['{0:>' + str(max(row)) + 's}' for row in zip(*rls)]
+
+header = ', '.join([fmt.format(field) for field, fmt in zip(header.split(','), rls)])
+
 rows = '\n'.join([selection.str(max_features) for selection in selections])
+rows = '\n'.join(
+    ', '.join([
+        fmt.format(field)
+        for field, fmt in zip(row.split(','), rls)
+    ]) for row in rows.splitlines()
+)
+
 print(header)
 print(rows)
 assert (

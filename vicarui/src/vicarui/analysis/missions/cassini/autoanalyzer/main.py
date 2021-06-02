@@ -47,11 +47,12 @@ def auto(*_, image: ImageWrapper = None, **config):
             CONTRAST_SHADOW: fig.add_subplot(244, label="Contrast at Shadow")
         }
 
+        shadow_angle = f"{(spice.pi() - helper.im_helper.bore_angle) * spice.dpr():.2f}"
         titles: Dict[str, str] = {
-            INTEGRAL_TARGET: fr"Integral in Target plane $({sci_2(t_size[0])}\,km/px,\,{sci_2(t_size[1])}\,km/px)$",
-            INTEGRAL_SHADOW: fr"Integral in Shadow plane $({sci_2(sp_size[0])}\,km/px,\,{sci_2(sp_size[1])}\,km/px)$",
-            CONTRAST_TARGET: fr"Contrast in Target plane $({sci_2(t_size[0])}\,km/px,\,{sci_2(t_size[1])}\,km/px)$",
-            CONTRAST_SHADOW: fr"Contrast in Shadow plane $({sci_2(sp_size[0])}\,km/px,\,{sci_2(sp_size[1])}\,km/px)$"
+            INTEGRAL_TARGET: fr"Integral in Image plane $({sci_2(t_size[0])}\,km/px,\,{sci_2(t_size[1])}\,km/px)$",
+            INTEGRAL_SHADOW: fr"Integral along shadow $({shadow_angle}\,deg)$",
+            CONTRAST_TARGET: fr"Contrast in image plane $({sci_2(t_size[0])}\,km/px,\,{sci_2(t_size[1])}\,km/px)$",
+            CONTRAST_SHADOW: fr"Contrast along shadow $({shadow_angle}\,deg)$"
         }
 
         plots[INTEGRAL_TARGET].sharey(plots[INTEGRAL_SHADOW])
@@ -63,9 +64,19 @@ def auto(*_, image: ImageWrapper = None, **config):
         def clear_subs():
             for k in plots:
                 p = plots[k]
-                p.clear()
+                from warnings import catch_warnings, simplefilter
+                with catch_warnings():
+                    simplefilter('ignore')
+                    p.clear()
+                p.set_yscale('log')
+                p.set_xscale('log')
+                p.minorticks_on()
                 p.set_title(titles[k])
                 p.set_xlabel("Distance from start (km)")
+                if 'i' in k:
+                    p.set_ylabel(r"$\dfrac{I\,km}{F}$", rotation=0)
+                else:
+                    p.set_ylabel(r"$\dfrac{I}{F}$", rotation=0)
 
         fig.set_tight_layout('true')
         imdata = helper.data.copy().astype('float64')
@@ -90,11 +101,11 @@ def auto(*_, image: ImageWrapper = None, **config):
                         [rect.get_x(), rect.get_x() + rect.get_width()],
                         [rect.get_y(), rect.get_y() + rect.get_height()],
                         color="blue",
-                        alpha=0.3
+                        alpha=0.1
                     )
                 else:
                     rect.set_color("blue")
-                    rect.set_alpha(0.3)
+                    rect.set_alpha(0.1)
                     ax.add_patch(rect)
                 yield t[1]
 
@@ -146,7 +157,7 @@ def auto(*_, image: ImageWrapper = None, **config):
             ax.imshow()
             ax.get_images()[0].set_clim(clim)
             s = to_selection(vertical)
-            log.info(f'ID: {helper.im_helper.id}')
+            log.info(f'ID: {helper.im_helper.id} BG: {image.degree if image.has_background else 0}')
             log.info(f'Selection: {s}')
             show(
                 helper.im_helper,

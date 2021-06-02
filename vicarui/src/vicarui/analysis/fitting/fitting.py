@@ -8,7 +8,7 @@ from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import PolynomialFeatures
 
 from .second_degree import additional_2nd_deg_info, roots_2nd_deg
-from ...support import Pipe, ransac
+from ...support import SMPipe, ransac
 
 
 @dataclass(frozen=True)
@@ -16,12 +16,13 @@ class Result:
     equation: np.ndarray
     title: str = ""
     additional: str = ""
+    pipe: Optional[SMPipe] = None
     mse: Optional[float] = None
     line: Optional[Line2D] = None
     outliers: Tuple[np.ndarray, np.ndarray] = None
 
 
-def reg_to_title(reg: Pipe, prefix: str) -> str:
+def reg_to_title(reg: SMPipe, prefix: str) -> str:
     return fr"{prefix} {reg.poly_str}"
 
 
@@ -114,17 +115,17 @@ class DataPacket(object):
         return x_in, x_out, y_in, y_out
 
     def _bg(self, min_samples: int):
-        return Pipe(
+        return SMPipe(
             transforms=[PolynomialFeatures(self.degree, include_bias=False)],
             reg=ransac(min_samples=min_samples, max_iter=100)
         )
 
     def _fg(self):
-        return Pipe(transforms=[PolynomialFeatures(self.degree, include_bias=False)])
+        return SMPipe(transforms=[PolynomialFeatures(self.degree, include_bias=False)])
 
     def _pipes(self, x_start: float, x_end: float, full: bool = True) -> Union[
-        Tuple[Pipe, Pipe, np.ndarray, np.ndarray, float, float, Tuple[np.ndarray, np.ndarray]],
-        Tuple[Pipe, Pipe],
+        Tuple[SMPipe, SMPipe, np.ndarray, np.ndarray, float, float, Tuple[np.ndarray, np.ndarray]],
+        Tuple[SMPipe, SMPipe],
     ]:
         x_in, x_out, y_in, y_out = self._collect_data(x_start, x_end)
 
@@ -164,19 +165,19 @@ class DataPacket(object):
             x_end: float,
             in_kwargs=None,
             out_kwargs=None,
-            simple: bool = False
+            simple: bool = False,
     ) -> Tuple[Result, Result]:
         if simple:
             bg, fg = self._pipes(x_start, x_end, full=False)
-            return Result(equation=bg.eq), Result(equation=fg.eq)
+            return Result(equation=bg.eq, pipe=bg), Result(equation=fg.eq, pipe=fg)
         else:
             if out_kwargs is None:
                 out_kwargs = dict()
             if in_kwargs is None:
                 in_kwargs = dict()
 
-            bg: Pipe
-            fg: Pipe
+            bg: SMPipe
+            fg: SMPipe
             bg, fg, nx_out, nx_in, bg_mse, fg_mse, outliers = self._pipes(x_start, x_end)
 
             if self.degree == 2:

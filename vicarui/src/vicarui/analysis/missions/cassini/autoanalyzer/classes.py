@@ -5,7 +5,7 @@ from typing import Any
 from ..config import *
 from ..funcs import norm
 from ..helpers import ImageHelper, Transformer
-from ....fitting import DataPacket, contrast_2nd_deg, integrate_2nd_deg
+from ....fitting import DataPacket, contrast_2nd_deg, integrate_2nd_deg, contrast_error_2nd_deg, integral_error_2nd_deg
 
 
 @dataclass(frozen=False)
@@ -24,6 +24,8 @@ class Fit:
     arg_max: float
     contrast: float
     integral: float
+    contrast_error: float
+    integral_error: float
     distance_px: Tuple[float, float]
 
     def is_finite(self):
@@ -36,8 +38,13 @@ class Fit:
             return self.integral
         elif i == 2:
             return self.distance_px
-        else:
+        elif i == 3:
+            return self.contrast_error
+        elif i == 4:
+            return self.integral_error
+        elif i == 5:
             return self.arg_max
+        return None
 
 
 class AutoFit:
@@ -58,6 +65,8 @@ class AutoFit:
 
     def fit(self, x: float, y: float) -> Fit:
         bg, fg = self.packet.fit(x, y, simple=True)
+        c_err = contrast_error_2nd_deg(bg.pipe, fg.pipe)
+        i_err = integral_error_2nd_deg(bg.pipe, fg.pipe, c_err)
         bg = bg.equation
         fg = fg.equation
         x_val, contrast = contrast_2nd_deg(bg, fg)
@@ -66,7 +75,9 @@ class AutoFit:
             arg_max=x_val,
             contrast=contrast,
             integral=integral,
-            distance_px=self.dist
+            distance_px=self.dist,
+            contrast_error=c_err,
+            integral_error=i_err
         )
 
 

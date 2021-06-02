@@ -2,14 +2,15 @@ from enum import Enum
 from os import walk
 from pathlib import Path
 from time import time
-from typing import Dict, List, Iterable, TypeVar, Callable
+from typing import Dict, List, Iterable, TypeVar, Callable, Union, Any
 
 import numpy as np
 from PySide2.QtCore import QThread
+from vicarutil.image.core import read_beg_labels, Labels
 
 from ..concurrent import typedsignal, signal
-from ...logging import handle_exception
 from ..ui import Progress
+from ...logging import handle_exception
 
 _T = TypeVar('_T')
 
@@ -19,6 +20,24 @@ class FileType(Enum):
     LABEL = "LBL"
 
 
+class SortType(Enum):
+    FILT = 'filter'
+    SEQ = 'sequence'
+    EXP = 'exposure'
+    OTHER = "--"
+
+    @staticmethod
+    def reverse(value: Any):
+        if isinstance(value, str):
+            if not hasattr(SortType, 'reversed_map'):
+                SortType.reversed_map = {e.value: e for e in SortType}
+            try:
+                return SortType.reversed_map[value]
+            except KeyError:
+                return SortType.OTHER
+        return value
+
+
 def _safe_file_iter(o: Iterable[_T]) -> Iterable[_T]:
     try:
         yield from o
@@ -26,11 +45,17 @@ def _safe_file_iter(o: Iterable[_T]) -> Iterable[_T]:
         yield from o
 
 
-def sequence_from_image(p: Path) -> str:
-    from vicarutil.image.core import read_beg_labels
+def labels_from_image(p: Path) -> Labels:
     with open(p, 'rb') as f:
-        labels = read_beg_labels(f)
+        return read_beg_labels(f)
+
+
+def sequence_from_image(p: Path) -> str:
+    try:
+        labels = labels_from_image(p)
         return f"Sequence {labels['IDENTIFICATION']['SEQUENCE_ID']}"
+    except KeyError:
+        return "Not Found"
 
 
 def default(*_, **__) -> str:
@@ -38,11 +63,9 @@ def default(*_, **__) -> str:
 
 
 def filter_from_image(p: Path) -> str:
-    from vicarutil.image.core import read_beg_labels
-    clear = {"CL1", "CL"}
-
-    with open(p, 'rb') as f:
-        labels = read_beg_labels(f)
+    try:
+        clear = {"CL1", "CL"}
+        labels = labels_from_image(p)
         filters = [str(o).strip() for o in labels['INSTRUMENT']['FILTER_NAME']]
         if len(filters) == 0:
             return "Other"
@@ -50,15 +73,20 @@ def filter_from_image(p: Path) -> str:
             return "Clear"
         else:
             return ','.join(filters)
+    except KeyError:
+        return "Not Found"
+
+
+def exposure_from_image(p: Path) -> str:
+    try:
+        labels = labels_from_image(p)
+        exposure = int(labels['INSTRUMENT']['EXPOSURE_DURATION']) // 1000
+        return f"{exposure - exposure % 10:d}"
+    except KeyError:
+        return "Not Found"
 
 
 class FileTask(QThread):
-    class Sort:
-        SEQ = 'sequence'
-        FILT = 'filter'
-        OTHER = "--"
-        SELECTIONS = [SEQ, FILT, OTHER]
-
     started = signal()
     set_count = typedsignal(int)
     update_count = typedsignal(int)
@@ -68,13 +96,13 @@ class FileTask(QThread):
             self,
             base_path: str,
             done_callback: Callable[[dict], None],
-            sort_by: str = Sort.SEQ
+            sort_by: Union[str, SortType] = None
     ):
         super(FileTask, self).__init__()
 
         self.base = Path(base_path)
         self._start = 0
-        self.sort_by = sort_by
+        self.sort_by = SortType.reverse(sort_by)
 
         _quit = self.quit
 
@@ -108,7 +136,6 @@ class FileTask(QThread):
 
     def run(self) -> None:
         try:
-
             self._start = time()
             self.started.emit()
             if self.base.is_dir():
@@ -120,10 +147,12 @@ class FileTask(QThread):
                 cnt = 0
                 self.update_count.emit(cnt)
 
-                if self.sort_by == FileTask.Sort.SEQ:
+                if self.sort_by == SortType.SEQ:
                     func = sequence_from_image
-                elif self.sort_by == FileTask.Sort.FILT:
+                elif self.sort_by == SortType.FILT:
                     func = filter_from_image
+                elif self.sort_by == SortType.EXP:
+                    func = exposure_from_image
                 else:
                     func = default
 
@@ -150,4 +179,4 @@ class FileTask(QThread):
             self.quit()
 
 
-__all__ = ['FileTask', 'FileType']
+__all__ = ['FileTask', 'FileType', 'SortType']

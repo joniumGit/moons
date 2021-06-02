@@ -6,7 +6,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import PolynomialFeatures
 
 from ...logging import handle_exception, info
-from ...support import OLSWrapper, ransac, ImageWrapper
+from ...support import SMAdapter, ransac, ImageWrapper
 
 
 def br_reduction(
@@ -76,12 +76,12 @@ def br_reduction(
 
             n = '\n'
             info(f"Background mse: {mse:.5e}")
-            est: OLSWrapper = reg.estimator_
+            est: SMAdapter = reg.estimator_
             info(
                 f"Bacground (model direct):"
                 f"\n- Coef:       {str(est.coef_).replace(n, '')}"
                 f"\n- Intercept:  {str(est.intercept_).replace(n, '')}"
-                f"\n- Errors:     {str(est.errors).replace(n, '')}"
+                f"\n- Errors:     {str(est.errors_).replace(n, '')}"
             )
     except Exception as e:
         handle_exception(e)
