@@ -35,7 +35,7 @@ class AdjustmentWidget(qt.QWidget):
         for i in range(1, 6):
             degree.addItem(str(i))
 
-        degree.setCurrentIndex(2)
+        degree.setCurrentIndex(1)
 
         self.degree_label = degree_label
         self.degree = degree
