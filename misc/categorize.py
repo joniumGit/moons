@@ -28,8 +28,8 @@ if __name__ == '__main__':
                     fp = p.joinpath(f)
                     with open(fp, 'rb') as io:
                         labels = read_beg_labels(io)
-                        filters: List[str] = labels['INSTRUMENT']['FILTER_NAME']
-                        actual: str
+                        filters: List[str] = [label.strip() for label in labels['INSTRUMENT']['FILTER_NAME']]
+                        actual: str = "NA"
                         if CL1 in filters and CL2 in filters:
                             clear.append(fp)
                         else:
@@ -37,10 +37,10 @@ if __name__ == '__main__':
                                 if filt != CL1 and filt != CL2:
                                     actual = filt
                                     break
-                        if actual not in values:
-                            values[actual] = [fp]
-                        else:
-                            values[actual].append(fp)
+                            if actual not in values:
+                                values[actual] = [fp]
+                            else:
+                                values[actual].append(fp)
                 except Exception as e:
                     print(e)
 
