@@ -1,6 +1,6 @@
 from .config import *
-from .funcs import norm
-from .helpers import ImageHelper, Transformer
+from .funcs import norm, target_estimate
+from .helpers import ImageHelper
 from ...common import load_kernels_for_image, release_kernels
 from ....support import sci_2
 
@@ -17,14 +17,9 @@ def set_info(
 
         helper = ImageHelper(raw, **config)
         config = helper.config
-
         target, target_id = helper.target_full
-        time = helper.time_et
-        utc = helper.time_utc()
-
-        # https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/cspice/phaseq_c.html
-        pa = spice.phaseq(time, target, SUN, CASSINI, ABCORR) * spice.dpr()
-
+        utc = helper.time_utc
+        pa = helper.phase_angle * spice.dpr()
         title = "%s FROM: %s - %s @ UTC %s \nPA=%.2f DEG" % (helper.id, CASSINI, target, utc, pa)
 
         try:
@@ -37,17 +32,16 @@ def set_info(
             h1 = helper.saturn_equator_offset(CASSINI_ID)
             h2 = helper.saturn_equator_offset(target_id)
 
-            sun_to_rings, shadow_in_image, shadow_to_bore = helper.shadow_angles
-
+            sun_to_rings, shadow_in_image, shadow_to_image = helper.shadow_angles
             ang_xy = f'{sun_to_rings:.2f} deg'
             ang_img = f'{shadow_in_image:.2f} deg'
-            ang_bore = f'{shadow_to_bore:.2f} deg'
+            ang_bore = f'{shadow_to_image:.2f} deg'
 
             title += (
                 "\n"
                 fr"Target from Ring Plane: ${sci_2(h2):}\,km$ Cassini from Ring Plane: ${sci_2(h1)}\,km$"
                 "\n"
-                f"Shadow angle in Image: {ang_img}, to Bore: {ang_bore}, to XY: {ang_xy}"
+                f"Shadow angle in Image: {ang_img}, to Image plane: {ang_bore}, to Ring: {ang_xy}"
             )
         except Exception as e:
             log.warning("Failed to find some data", exc_info=e)
@@ -87,21 +81,16 @@ def set_info(
                     log.exception("Something happened", exc_info=e)
 
                 if config[SUN_SATURN_VECTORS] or config[TARGET_ESTIMATE]:
-                    t = Transformer(J2K, helper.frame, time)
-                    sun_pos = helper.pos(SUN_ID, helper.target_id())
-                    if helper.target_id() == SATURN_ID:
-                        it = -t
-                        t_cas = helper.pos_in_sat(CASSINI_ID, SATURN_ID)
-                        t_bore = it(helper.fbb[1])
-                        saturn_pos = -(t_cas + t_bore * -t_cas[2] / t_bore[2])
+                    sun_pos = helper.trpf(SUN_ID)
+                    if helper.target_id == SATURN_ID:
+                        saturn_pos = helper.crpf(SATURN_ID)
                     else:
-                        saturn_pos = helper.pos(SATURN_ID, helper.target_id())
-                    t_sun, t_saturn = (-norm(v)[0:2] for v in t(sun_pos, saturn_pos))
+                        saturn_pos = helper.trpf(SATURN_ID)
+                    t_sun, t_saturn = (-norm(v)[0:2] for v in (sun_pos, saturn_pos))
 
                     if config[SUN_SATURN_VECTORS]:
                         x = 70
                         y = 70
-
                         sun = np.column_stack(
                             (
                                 [x, y],
@@ -111,7 +100,6 @@ def set_info(
                                 ]
                             )
                         )
-
                         sat = np.column_stack(
                             (
                                 [x, y],
@@ -121,39 +109,13 @@ def set_info(
                                 ]
                             )
                         )
-
-                        ax.plot(*sun, label="Sun", color="y", linewidth=1)
-                        ax.plot(*sat, label="Saturn", color="r", linewidth=1)
+                        ax.plot(*sun, label="Sun", color=SUN_COLOR, linewidth=1)
+                        ax.plot(*sat, label="Saturn", color=SATURN_COLOR, linewidth=1)
 
                     if config[TARGET_ESTIMATE]:
-                        t_pos = helper.pos_in_frame(target_id, CASSINI_ID)
-                        frame_name, bore, boundaries = helper.fbb
-
-                        x_len = len(raw.data[0])
-                        y_len = len(raw.data[0][0])
-
-                        x = 0
-                        y = 0
-
-                        b = boundaries[np.argmin([np.linalg.norm(b) for b in boundaries])]
-                        x += np.arctan(t_pos[0] / t_pos[2]) / np.arctan(b[0] / b[2]) * x_len / 2. * np.sign(t_pos[0])
-                        y += np.arctan(t_pos[1] / t_pos[2]) / np.arctan(b[1] / b[2]) * y_len / 2. * np.sign(t_pos[1])
-
-                        if image.invalid_indices is not None:
-                            for i in image.invalid_indices[::-1]:
-                                if i <= y:
-                                    y -= 1
-
-                        if image.border != 0:
-                            log.debug(f"Border detected: {image.border}")
-                            x += (x_len - 2 * image.border) / 2.
-                            y += (y_len - 2 * image.border) / 2.
-                        else:
-                            x += x_len / 2.
-                            y += y_len / 2.
-
+                        x, y = target_estimate(image, helper)
                         log.debug(f"Estimate {x},{y}")
-                        ax.scatter(x, y, s=16, c="g", alpha=0.65)
+                        ax.scatter(x, y, s=16, c=TARGET_ALT_COLOR, alpha=0.65)
             except ImportError as e:
                 log.exception("No matplotlib", exc_info=e)
             except Exception as e:

@@ -87,9 +87,7 @@ class FitHelper:
         self.data = image.processed
         self.packet = DataPacket(self.data)
         self.autofit = AutoFit(self.packet)
-        self.shadow = norm(Transformer(SATURN_FRAME, helper.frame, helper.time_et)(
-            helper.pos_in_sat(SUN_ID, helper.target_id()))
-        )[0:2]
+        self.shadow = norm(helper.trpf(SUN_ID))[0:2]
         self.im_helper = helper
 
     def __call__(self, s: Selection) -> Generator[Tuple[Any, Fit]]:

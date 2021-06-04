@@ -54,9 +54,9 @@ def view_geometry(*_, image: ImageWrapper = None, **config):
             pp.plot_camera(closeup=False)
             pp.label()
 
-            sat_cas_dist = np.linalg.norm(helper.pos_in_sat(SATURN_ID, CASSINI_ID))
-            target_cas_dist = np.linalg.norm(helper.pos_in_sat(helper.target_id(), CASSINI_ID))
-            sat_target_dist = np.linalg.norm(helper.pos_in_sat(SATURN_ID, helper.target_id()))
+            sat_cas_dist = np.linalg.norm(helper.crps(SATURN_ID))
+            target_cas_dist = helper.target_distance
+            sat_target_dist = np.linalg.norm(helper.trps(SATURN_ID))
 
             img_id = helper.id
             info = QTextEdit()
@@ -71,11 +71,11 @@ def view_geometry(*_, image: ImageWrapper = None, **config):
                     right = f'{right:.5e} km'
                 return f"{left}    *{right}*"
 
-            sun_to_rings, shadow_in_image, shadow_to_bore = helper.shadow_angles
+            sun_to_rings, shadow_in_image, shadow_to_image = helper.shadow_angles
 
             ang_xy = f'{sun_to_rings:.5f} deg'
             ang_img = f'{shadow_in_image:.5f} deg'
-            ang_bore = f'{shadow_to_bore:.5f} deg'
+            ang_bore = f'{shadow_to_image:.5f} deg'
 
             from textwrap import dedent
             info.setMarkdown(dedent(
@@ -86,23 +86,23 @@ def view_geometry(*_, image: ImageWrapper = None, **config):
 
                 #### Distances:
                 - {lr("Saturn:", sat_cas_dist)}
-                - {lr(helper.target_name(), target_cas_dist)}
+                - {lr(helper.target_name, target_cas_dist)}
 
                 #### Separation form ring plane:
                 - {lr('h:', helper.saturn_equator_offset(CASSINI_ID))}
 
-                ## {helper.target_name()}
+                ## {helper.target_name}
 
                 #### Distances:
                 - {lr("Saturn:", sat_target_dist)}
 
                 #### Separation from ring plane:
-                - {lr('h:', helper.saturn_equator_offset(helper.target_id()))}
+                - {lr('h:', helper.saturn_equator_offset(helper.target_id))}
 
                 #### Shadow:
-                - {lr('Angle to XY-plane:', ang_xy)}
+                - {lr('Angle to Ring plane (x,y plane):', ang_xy)}
                 - {lr('Direction in image:', ang_img)}
-                - {lr('Angle to Bore vector:', ang_bore)}
+                - {lr('Angle to image:', ang_bore)}
                 """
             ))
             info.setReadOnly(True)

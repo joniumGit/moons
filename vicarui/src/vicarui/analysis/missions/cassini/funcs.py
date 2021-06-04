@@ -49,7 +49,7 @@ def img_rp_size(helper: ImageHelper) -> Tuple[float, float]:
 
     Returns Width, Height in km
     """
-    cas = spice.spkezp(CASSINI_ID, helper.time_et, SATURN_FRAME, ABCORR, SATURN_ID)[0]
+    cas = -helper.crps(SATURN_ID)
     frame, bore, bounds = helper.fbb
     t = Transformer(frame, SATURN_FRAME, helper.time_et)
     cas_xy = cas[0:2]
@@ -86,7 +86,7 @@ def img_raw_size(helper: ImageHelper) -> Tuple[float, float]:
     t = Transformer(frame, SATURN_FRAME, helper.time_et)
     bore = t(bore)
 
-    target_dist = np.linalg.norm(helper.pos_in_sat(helper.target_id(), CASSINI_ID))
+    target_dist = helper.target_distance
     bore_len = np.linalg.norm(bore)
     corners = [t(b) * target_dist / np.dot(t(b), bore) * bore_len for b in bounds]
 
@@ -106,7 +106,7 @@ def get_camera_intersects(helper: ImageHelper):
     """
     Where should our camera be? in RS
     """
-    cassini_pos = helper.pos_in_sat(CASSINI_ID, SATURN_ID)
+    cassini_pos = -helper.crps(SATURN_ID)
     # Calculating intercepts
     frm, bore, bounds = helper.fbb
     t = Transformer(frm, SATURN_FRAME, helper.time_et)
@@ -129,7 +129,7 @@ def get_camera_intersects(helper: ImageHelper):
     else:
         # Raw
         bore_len = np.linalg.norm(bore)
-        target_dist = np.linalg.norm(helper.pos_in_sat(CASSINI_ID, helper.target_id()))
+        target_dist = helper.target_distance
         cnt = target_dist / bore_len
         bore_intercept = cassini_pos + bore * cnt
         for b in bounds:
@@ -142,6 +142,38 @@ def get_camera_intersects(helper: ImageHelper):
     return scale_to_rs(bore_intercept), bound_intersects, up * scale
 
 
+def target_estimate(image: ImageWrapper, helper: ImageHelper) -> Tuple[float, float]:
+    raw = helper.image
+
+    t_pos = helper.crpf(helper.target_id)
+    frame_name, bore, boundaries = helper.fbb
+
+    x_len = len(raw.data[0])
+    y_len = len(raw.data[0][0])
+
+    x = 0
+    y = 0
+
+    b = boundaries[np.argmin([np.linalg.norm(b) for b in boundaries])]
+    x += np.arctan(t_pos[0] / t_pos[2]) / np.arctan(b[0] / b[2]) * x_len / 2. * np.sign(t_pos[0])
+    y += np.arctan(t_pos[1] / t_pos[2]) / np.arctan(b[1] / b[2]) * y_len / 2. * np.sign(t_pos[1])
+
+    if image.invalid_indices is not None:
+        for i in image.invalid_indices[::-1]:
+            if i <= y:
+                y -= 1
+
+    if image.border != 0:
+        log.debug(f"Border detected: {image.border}")
+        x += (x_len - 2 * image.border) / 2.
+        y += (y_len - 2 * image.border) / 2.
+    else:
+        x += x_len / 2.
+        y += y_len / 2.
+
+    return x, y
+
+
 __all__ = [
     'norm',
     'rs',
@@ -150,5 +182,6 @@ __all__ = [
     'get_config',
     'img_rp_size',
     'img_raw_size',
-    'img_sp_size'
+    'img_sp_size',
+    'target_estimate'
 ]

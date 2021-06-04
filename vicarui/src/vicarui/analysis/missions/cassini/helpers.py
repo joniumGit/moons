@@ -31,10 +31,11 @@ class ImageHelper:
         self.config = Config(**config)
 
     def __getitem__(self, item: str):
-        if item in self.identification():
-            return self.identification()[item]
+        if item in self.identification:
+            return self.identification[item]
         return self.image.labels.property(item)
 
+    @property
     def identification(self):
         """
         Image identification property
@@ -46,7 +47,7 @@ class ImageHelper:
         """
         Image id
         """
-        return str(self.identification()['IMAGE_NUMBER'])
+        return str(self.identification['IMAGE_NUMBER'])
 
     @cached_property
     def target_full(self) -> Tuple[str, int]:
@@ -59,36 +60,39 @@ class ImageHelper:
             target_id = spice.bods2c(ovr)
             log.debug(f'TARGET_OVERRIDE = {ovr}')
         else:
-            target = self.identification()['TARGET_NAME']
+            target = self.identification['TARGET_NAME']
             target_id = spice.bodn2c(target)
             log.debug(f'TARGET_NAME = {target}')
 
         return target, target_id
 
+    @property
     def target_name(self) -> str:
         """
         Target name
         """
         return self.target_full[0]
 
+    @property
     def target_id(self):
         """
         Target id
         """
         return self.target_full[1]
 
+    @property
     def time_utc(self) -> str:
         """
         Image time in UTC
         """
-        return self.identification()['IMAGE_TIME']
+        return self.identification['IMAGE_TIME']
 
     @cached_property
     def time_et(self) -> float:
         """
         Image time in ET
         """
-        return spice.utc2et(self.time_utc().strip()[:-1])
+        return spice.utc2et(self.time_utc.strip()[:-1])
 
     @cached_property
     def frame(self) -> str:
@@ -100,35 +104,115 @@ class ImageHelper:
         if ovr is not None and ovr != "":
             frame = spice.frmnam(spice.bods2c(ovr))
         else:
-            frame = l2i(self.identification()['INSTRUMENT_ID'])
+            frame = l2i(self.identification['INSTRUMENT_ID'])
         return frame
 
-    def pos(self, target: int, obs: int) -> np.ndarray:
-        """
-        Position in J2K frame
-        """
-        return spice.spkezp(target, self.time_et, J2K, ABCORR, obs)[0]
+    @cached_property
+    def target_distance(self):
+        return np.linalg.norm(self.crps(self.target_id))
 
-    def pos_in_sat(self, target: int, obs: int) -> np.ndarray:
+    @cached_property
+    def phase_angle(self) -> float:
+        """
+        Phase angle of target in radians
+
+        https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/cspice/phaseq_c.html
+
+        :return: Phase angle in radians
+        """
+        return spice.phaseq(self.time_et, self.target_name, SUN, CASSINI, Correction.CNS)
+
+    @cached_property
+    def lts(self) -> float:
+        """
+        Light time correction between target and cassini calculated with LTS
+        """
+        return spiceypy.spkezp(self.target_id, self.time_et, J2K, Correction.LTS, CASSINI_ID)[1]
+
+    @property
+    def target_time(self) -> float:
+        """
+        Time at Target
+        """
+        return self.time_et - self.lts
+
+    def trp(self, obj: int, frame: str, correction: str = Correction.LT) -> np.ndarray:
+        """
+        Target relative position in the specified frame
+        """
+        return spice.spkezp(obj, self.target_time, frame, correction, self.target_id)[0]
+
+    def trpf(self, obj: int, correction: str = Correction.LT) -> np.ndarray:
+        """
+        Target Relative Position in Frame
+        """
+        return self.trp(obj, self.frame, correction)
+
+    def trps(self, obj: int, correction: str = Correction.LT) -> np.ndarray:
+        """
+        Target Relative Position in Saturn Frame
+        """
+        return self.trp(obj, SATURN_FRAME, correction)
+
+    def crp(self, obj: int, frame: str, correction: str = Correction.LTS) -> np.ndarray:
+        """
+        Cassini relative position in the specified frame
+        """
+        return spice.spkezp(obj, self.time_et, frame, correction, CASSINI_ID)[0]
+
+    def crpf(self, obj: int, correction: str = Correction.LTS) -> np.ndarray:
+        """
+        Cassini Relative Position in Frame
+        """
+        return self.crp(obj, self.frame, correction)
+
+    def crps(self, obj: int, correction: str = Correction.LTS) -> np.ndarray:
+        """
+        Cassini relative position in Saturn Frame
+        """
+        return self.crp(obj, SATURN_FRAME, correction)
+
+    def ltsp(self, target: int, obs: int, frame: str, correction: str = Correction.LTS) -> np.ndarray:
+        """
+        Position in Any frame reduced by the image light time (Cassini - Target)
+
+        :param target: The target being observed
+        :param obs: The observer
+        :param frame: Reference frame to output the vector in
+        :param correction: The Aberration correction setting to be used
+        :returns: Position as a 3-Vector
+        """
+        return spice.spkezp(target, self.target_time, frame, correction, obs)[0]
+
+    def pos(self, target: int, obs: int, frame: str, correction: str = Correction.LTS) -> np.ndarray:
+        """
+        Position in Any frame at image ET
+
+        :param target: The target being observed
+        :param obs: The observer
+        :param frame: Reference frame to output the vector in
+        :param correction: The Aberration correction setting to be used
+        :returns: Position as a 3-Vector
+        """
+        return spice.spkezp(target, self.time_et, frame, correction, obs)[0]
+
+    def pos_in_sat(self, target: int, obs: int, correction: str = Correction.NONE) -> np.ndarray:
         """
         Position is IAU_SATURN frame
         """
-        return spice.spkezp(target, self.time_et, SATURN_FRAME, ABCORR, obs)[0]
+        return spice.spkezp(target, self.time_et, SATURN_FRAME, correction, obs)[0]
 
-    def pos_in_frame(self, target: int, obs: int, frame: str = None) -> np.ndarray:
+    def pos_in_frame(self, target: int, obs: int, frame: str = None, correction: str = Correction.NONE) -> np.ndarray:
         """
         Position in frame
         """
-        if frame is not None:
-            return spice.spkezp(target, self.time_et, frame, ABCORR, obs)[0]
-        else:
-            return spice.spkezp(target, self.time_et, self.frame, ABCORR, obs)[0]
+        return spice.spkezp(target, self.time_et, frame or self.frame, correction, obs)[0]
 
     def saturn_equator_offset(self, target: int):
         """
         Offset from Equatorial plane
         """
-        return spice.spkezp(target, self.time_et, SATURN_FRAME, ABCORR, SATURN_ID)[0][2]
+        return spice.spkezp(target, self.time_et, SATURN_FRAME, Correction.LT, SATURN_ID)[0][2]
 
     @cached_property
     def fbb(self):
@@ -141,7 +225,7 @@ class ImageHelper:
 
     @cached_property
     def target_radii(self) -> float:
-        return np.average(spice.bodvcd(self.target_id(), 'RADII', 3)[1])
+        return np.average(spice.bodvcd(self.target_id, 'RADII', 3)[1])
 
     @cached_property
     def bore_angle(self) -> float:
@@ -149,7 +233,7 @@ class ImageHelper:
         Angle to bore in radians
         """
         bore = Transformer(self.frame, SATURN_FRAME, self.time_et)(self.fbb[1])
-        sun = self.pos_in_sat(SUN_ID, self.target_id())
+        sun = self.trps(SUN_ID)
         return np.arccos(
             np.dot(-bore, -sun)
             / np.linalg.norm(sun)
@@ -159,15 +243,15 @@ class ImageHelper:
     @cached_property
     def shadow_angles(self) -> Tuple[float, float, float]:
         """
-        Shadow angle offset and shadow angle in image
+        Shadow angle offset and shadow angle in image DEG
 
         - Shadow angle from xy plane
         - Shadow angle in image
-        - Shadow angle to bore vector
+        - Phase angle compliment
         """
-        sun_to_target = self.pos_in_sat(self.target_id(), SUN_ID)
+        sun_to_target = self.trps(SUN_ID, correction=Correction.LT)
         sun_to_target_xy = np.asarray([*sun_to_target[0:2], 0])
-        sun_to_target_in_frame = self.pos_in_frame(SUN_ID, self.target_id())[0:2]
+        sun_to_target_in_frame = self.trpf(SUN_ID)[0:2]
         return np.round(
             np.arccos(
                 np.dot(sun_to_target, sun_to_target_xy)
@@ -179,7 +263,7 @@ class ImageHelper:
             np.arctan(sun_to_target_in_frame[1] / sun_to_target_in_frame[0]) * spice.dpr(),
             7
         ), np.round(
-            self.bore_angle * spiceypy.dpr(),
+            (spice.pi() - self.phase_angle) * spiceypy.dpr(),
             7
         )
 
@@ -285,9 +369,9 @@ class ShadowPlaneIntersect:
     """
 
     def __init__(self, helper: ImageHelper):
-        cas = helper.pos_in_sat(CASSINI_ID, SATURN_ID)
-        target = helper.pos_in_sat(helper.target_id(), SATURN_ID)
-        sv = helper.pos_in_sat(SUN_ID, helper.target_id())
+        cas = helper.pos(CASSINI_ID, SATURN_ID, SATURN_FRAME, Correction.NONE)
+        target = helper.ltsp(helper.target_id, SATURN_ID, SATURN_FRAME, Correction.NONE)
+        sv = helper.trps(SUN_ID)
         self.cas = cas
         self.a_ratio = sv[1] / sv[0]
         self.y_diff = target[1] - cas[1]

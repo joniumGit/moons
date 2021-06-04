@@ -28,6 +28,8 @@ class FigureWrapper(FigureCanvasQTAgg):
         norm: ImageNormalize = None
         click: Callable[[], Tuple[int, int]] = None
 
+        set_info: Callable = None
+
     _holder: Holder = None
     _task: QThread = None
 
@@ -69,6 +71,7 @@ class FigureWrapper(FigureCanvasQTAgg):
         image = self._holder.image
 
         self.event_handler = VicarEvent(image.processed, data, line, self._holder.click)
+        self._holder.set_info()
 
         reduced = image.normalize(image.processed)
         normalizer = norm(reduced)
@@ -110,20 +113,23 @@ class FigureWrapper(FigureCanvasQTAgg):
         bg.set_title("background")
         line.set_title("line")
 
-        try:
-            self.fig.suptitle(
-                set_info(
-                    image,
-                    image_axis=data,
-                    analysis_axis=line,
-                    background=bg,
-                    **kwargs
-                ),
-                fontsize='small',
-                fontfamily='monospace'
-            )
-        except Exception as e:
-            log.exception("Failed to set info", exc_info=e)
+        def __iset():
+            try:
+                self.fig.suptitle(
+                    set_info(
+                        image,
+                        image_axis=data,
+                        analysis_axis=line,
+                        background=bg,
+                        **kwargs
+                    ),
+                    fontsize='small',
+                    fontfamily='monospace'
+                )
+            except Exception as e:
+                log.exception("Failed to set info", exc_info=e)
+
+        self._holder.set_info = __iset
 
     def show_image(
             self,

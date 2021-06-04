@@ -89,7 +89,7 @@ def get_pipes(fits: List[Fit]):
             color="cyan",
             style="-",
             title=r"$y = A \cdot x^k$ (Weighted)",
-            reg=Powerlaw(max_iter=500),
+            reg=Powerlaw(max_iter=1000),
             display_style=PipeStr.DELEGATE,
             needs_errors=True
         ),
@@ -99,10 +99,20 @@ def get_pipes(fits: List[Fit]):
             color="cyan",
             style="-",
             title=r"$y = A \cdot x^k$",
-            reg=Powerlaw(max_iter=1500),
+            reg=Powerlaw(max_iter=1000),
             display_style=PipeStr.DELEGATE,
             needs_errors=False
         ),
+        # Pipe(
+        #     enabled=True,
+        #     name="linear",
+        #     color="black",
+        #     style="-",
+        #     title=r"$y = kx + A$",
+        #     reg=make_sac(SMAdapter(fit_intercept=True), max_trials=300),
+        #     display_style=PipeStr.KAB,
+        #     needs_errors=False
+        # ),
     ]
 
 

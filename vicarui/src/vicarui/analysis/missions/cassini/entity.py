@@ -49,8 +49,8 @@ class PlotPacket:
             )
 
     def plot_target(self):
-        t_pos = scale_to_rs(self.helper.pos_in_sat(self.helper.target_id(), SATURN_ID))
-        t_r = np.average(scale_to_rs(spice.bodvcd(self.helper.target_id(), 'RADII', 3)[1]))
+        t_pos = scale_to_rs(-self.helper.trps(SATURN_ID))
+        t_r = np.average(scale_to_rs(spice.bodvcd(self.helper.target_id, 'RADII', 3)[1]))
         self._plot_sphere(t_pos, t_r, TARGET_COLOR)
 
     def plot_saturn(self):
@@ -58,12 +58,11 @@ class PlotPacket:
         self._plot_sphere(np.zeros(3), 1, SATURN_COLOR)
 
     def plot_sun(self):
-        sp = scale_to_rs(self.helper.pos_in_sat(SUN_ID, self.helper.target_id()))
-        tp = scale_to_rs(self.helper.pos_in_sat(self.helper.target_id(), SATURN_ID))
+        sat = scale_to_rs(self.helper.trps(SATURN_ID))
+        sp = scale_to_rs(self.helper.trps(SUN_ID))
+        tp = -sat
         self.ax.plot(*np.column_stack((tp, tp + sp * 1 / np.linalg.norm(sp))), color=SUN_COLOR)
         self.ax.plot(*np.column_stack((tp, tp - sp * 1 / np.linalg.norm(sp))), color=TARGET_COLOR)
-
-        sat = scale_to_rs(self.helper.pos_in_sat(SATURN_ID, self.helper.target_id()))
         if np.linalg.norm(sat) <= 1:
             self.ax.plot(*np.column_stack((tp, (0, 0, 0))), color=SATURN_COLOR)
         else:
@@ -71,8 +70,8 @@ class PlotPacket:
 
     def plot_camera(self, closeup: bool = True):
         bore, bounds, up = get_camera_intersects(self.helper)
-        cas = scale_to_rs(self.helper.pos_in_sat(CASSINI_ID, SATURN_ID))
-        target = scale_to_rs(self.helper.pos_in_sat(self.helper.target_id(), SATURN_ID))
+        cas = scale_to_rs(-self.helper.crps(SATURN_ID))
+        target = scale_to_rs(-self.helper.trps(SATURN_ID))
         self.ax.scatter(cas[0], cas[1], cas[2], c=CASSINI_COLOR, zorder=10)
         self.ax.plot([cas[0], cas[0]], [cas[1], cas[1]], [0, cas[2]], c=CASSINI_COLOR, zorder=10)
         self.ax.plot(*np.column_stack((cas, bore)), color=CAMERA_COLOR, zorder=100)
