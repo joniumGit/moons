@@ -148,12 +148,12 @@ class ImageHelper:
         """
         Angle to bore in radians
         """
-        inverse_bore = -Transformer(self.frame, SATURN_FRAME, self.time_et)(self.fbb[1])
-        sun_to_target = self.pos_in_sat(self.target_id(), SUN_ID)
+        bore = Transformer(self.frame, SATURN_FRAME, self.time_et)(self.fbb[1])
+        sun = self.pos_in_sat(SUN_ID, self.target_id())
         return np.arccos(
-            np.dot(inverse_bore, sun_to_target)
-            / np.linalg.norm(inverse_bore)
-            / np.linalg.norm(sun_to_target)
+            np.dot(-bore, -sun)
+            / np.linalg.norm(sun)
+            / np.linalg.norm(bore)
         )
 
     @cached_property

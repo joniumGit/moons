@@ -47,7 +47,7 @@ def auto(*_, image: ImageWrapper = None, **config):
             CONTRAST_SHADOW: fig.add_subplot(244, label="Contrast at Shadow")
         }
 
-        shadow_angle = f"{(spice.pi() - helper.im_helper.bore_angle) * spice.dpr():.2f}"
+        shadow_angle = f"{(spice.pi() / 2 - helper.im_helper.bore_angle) * spice.dpr():.2f}"
         titles: Dict[str, str] = {
             INTEGRAL_TARGET: fr"Integral in Image plane $({sci_2(t_size[0])}\,km/px,\,{sci_2(t_size[1])}\,km/px)$",
             INTEGRAL_SHADOW: fr"Integral along shadow $({shadow_angle}\,deg)$",
