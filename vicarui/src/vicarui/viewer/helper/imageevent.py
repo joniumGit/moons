@@ -3,10 +3,11 @@ from typing import Tuple, Callable
 import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.backend_bases import MouseEvent, MouseButton
+from matplotlib.ticker import FuncFormatter, AutoMinorLocator
 
 from ...analysis import DataPacket
 from ...logging import log
-from ...support import sci_4
+from ...support import sci_4, sci_n
 
 
 class VicarEvent:
@@ -30,6 +31,7 @@ class VicarEvent:
 
         self.outliers = list()
         self.rect = None
+        self.redraw = False
 
     def data_axis_handler(self, x: float, y: float, btn: MouseButton):
         self.clear_line_soft()
@@ -65,8 +67,9 @@ class VicarEvent:
             self.line_has_data = True
         else:
             self.line_has_data = False
-        self.line_axis.refresh()
-        self.data_axis.refresh()
+        if self.redraw:
+            self.line_axis.refresh()
+            self.redraw = False
 
     def _fit(self):
         bg, fg = self.dpkt.fit(
@@ -106,12 +109,12 @@ class VicarEvent:
                     marker='.'
                 )
             )
-        self.line_axis.refresh()
 
     def __call__(self, event: MouseEvent):
         if event.canvas.cursor().shape() != 0:
             return
         if event.inaxes == self.line_axis and self.line_has_data:
+            self.redraw = True
             for outlier in self.outliers:
                 outlier.remove()
             self.outliers.clear()
@@ -140,13 +143,22 @@ class VicarEvent:
                     self.line_axis.append_left("set start ")
                 self.fit_x_end = -1
                 self.line_axis.clear_lines()
-            self.line_axis.figure.canvas.draw()
         elif event.inaxes == self.data_axis:
             self.data_axis_handler(event.xdata, event.ydata, event.button)
+        if self.redraw:
+            self.line_axis.refresh()
+            self.redraw = False
 
     def clear_line_soft(self):
+        self.redraw = True
         self.line_axis.clear()
-        self.line_axis.secondary_yaxis(location="right")
+        self.line_axis.grid(alpha=0.4)
+        self.line_axis.grid(which='minor', linestyle='--', alpha=0.2)
+        ax2 = self.line_axis.secondary_yaxis(location="right")
+        ax2.set_yticklabels([])
+        ax2.yaxis.set_minor_locator(AutoMinorLocator(4))
+        self.line_axis.minorticks_on()
+        self.line_axis.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f"${sci_n(x, 1)}$"))
 
     def clear_line(self):
         self.clear_line_soft()

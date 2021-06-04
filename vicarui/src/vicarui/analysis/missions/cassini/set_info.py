@@ -59,8 +59,8 @@ def set_info(
                     second_x = ax.secondary_xaxis(location=1.07, functions=helper.size_x_transforms)
                     second_y = ax.secondary_yaxis(location=1.07, functions=helper.size_y_transforms)
 
-                    second_y.yaxis.set_minor_locator(AutoMinorLocator())
-                    second_x.xaxis.set_minor_locator(AutoMinorLocator())
+                    second_y.yaxis.set_minor_locator(AutoMinorLocator(10))
+                    second_x.xaxis.set_minor_locator(AutoMinorLocator(10))
 
                     second_y.set_ylabel(
                         f"At {helper.size_name} intercept "
@@ -74,7 +74,7 @@ def set_info(
                             location=-0.22,
                             functions=helper.size_y_transforms if vertical else helper.size_x_transforms
                         )
-                        ax2.xaxis.set_minor_locator(AutoMinorLocator())
+                        ax2.xaxis.set_minor_locator(AutoMinorLocator(10))
 
                     analysis_axis.axes_modifier = mod_ax
                 except Exception as e:

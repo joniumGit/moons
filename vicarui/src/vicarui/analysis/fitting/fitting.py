@@ -1,6 +1,6 @@
 from collections import deque
 from dataclasses import dataclass
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple, Union, Any
 
 import numpy as np
 from matplotlib.pyplot import Rectangle, Line2D, Axes
@@ -90,8 +90,8 @@ class DataPacket(object):
                 **kwargs
             )
 
-    def scatter(self, ax: Axes, **kwargs):
-        ax.scatter(self.x_data, self.y_data, **kwargs)
+    def scatter(self, ax: Axes, **kwargs) -> Any:
+        return ax.scatter(self.x_data, self.y_data, **kwargs)
 
     def _collect_data(self, x_start: float, x_end: float) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         x_in = deque()

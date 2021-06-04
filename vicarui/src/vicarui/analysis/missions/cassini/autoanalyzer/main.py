@@ -26,7 +26,7 @@ def auto(*_, image: ImageWrapper = None, **config):
         load_kernels_for_image(image.raw)
         helper = FitHelper(image, ImageHelper(image.raw, **config))
         t_size = helper.im_helper.per_px(helper.im_helper.size_at_target)
-        shadow_angle = fr"${(spice.pi() - helper.im_helper.phase_angle) * spice.dpr():.2f}$ deg"
+        shadow_angle = fr"${helper.im_helper.shadow_angles[2]:.2f}$ deg"
 
         d = modal()
         d.setWindowTitle("Autofit")

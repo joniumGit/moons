@@ -247,7 +247,7 @@ class ImageHelper:
 
         - Shadow angle from xy plane
         - Shadow angle in image
-        - Phase angle compliment
+        - Shadow angle to image
         """
         sun_to_target = self.trps(SUN_ID, correction=Correction.LT)
         sun_to_target_xy = np.asarray([*sun_to_target[0:2], 0])
@@ -263,7 +263,7 @@ class ImageHelper:
             np.arctan(sun_to_target_in_frame[1] / sun_to_target_in_frame[0]) * spice.dpr(),
             7
         ), np.round(
-            (spice.pi() - self.phase_angle) * spiceypy.dpr(),
+            (self.phase_angle - spice.pi() / 2) * spiceypy.dpr(),
             7
         )
 

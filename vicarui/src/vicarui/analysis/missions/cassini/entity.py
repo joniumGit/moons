@@ -68,14 +68,18 @@ class PlotPacket:
         else:
             self.ax.plot(*np.column_stack((tp, tp + sat * 1 / np.linalg.norm(sat))), color=SATURN_COLOR)
 
-    def plot_camera(self, closeup: bool = True):
+    def plot_camera(self, closeup: bool = True, rings: bool = False):
         bore, bounds, up = get_camera_intersects(self.helper)
         cas = scale_to_rs(-self.helper.crps(SATURN_ID))
         target = scale_to_rs(-self.helper.trps(SATURN_ID))
         self.ax.scatter(cas[0], cas[1], cas[2], c=CASSINI_COLOR, zorder=10)
         self.ax.plot([cas[0], cas[0]], [cas[1], cas[1]], [0, cas[2]], c=CASSINI_COLOR, zorder=10)
         self.ax.plot(*np.column_stack((cas, bore)), color=CAMERA_COLOR, zorder=100)
+
+        if rings:
+            up[2] = 0
         self.ax.plot(*np.column_stack((bore, bore + up)), color=CAMERA_COLOR, zorder=100)
+
         for b in bounds:
             self.ax.plot(*b, color=CAMERA_COLOR, linestyle='--', zorder=100, alpha=0.65)
         if len(bounds) == 4:

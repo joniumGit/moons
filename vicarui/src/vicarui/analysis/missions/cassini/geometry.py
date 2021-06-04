@@ -44,14 +44,14 @@ def view_geometry(*_, image: ImageWrapper = None, **config):
             pp.plot_saturn()
             pp.plot_target()
             pp.plot_sun()
-            pp.plot_camera()
+            pp.plot_camera(rings=config[SIZE_FRAME] == SIZE_AT_RING)
             pp.label()
 
             pp = PlotPacket(helper, ax2)
             pp.plot_saturn()
             pp.plot_target()
             pp.plot_sun()
-            pp.plot_camera(closeup=False)
+            pp.plot_camera(closeup=False, rings=config[SIZE_FRAME] == SIZE_AT_RING)
             pp.label()
 
             sat_cas_dist = np.linalg.norm(helper.crps(SATURN_ID))

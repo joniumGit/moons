@@ -27,7 +27,7 @@ def show(
     tgt_size = np.asarray(helper.per_px(helper.size_at_target))
     px_to_km = np.asarray([np.sqrt((d[0] * tgt_size[0]) ** 2 + (d[1] * tgt_size[1]) ** 2) for d in px_dist])
 
-    dists: List[np.ndarray] = [px_to_km, px_to_km / np.sin(spice.pi() - helper.phase_angle)]
+    dists: List[np.ndarray] = [px_to_km, px_to_km / np.cos(spice.pi() - helper.phase_angle)]
 
     contrast = np.asarray([fit.contrast for fit in fits])
     c_error = np.asarray([fit.contrast_error for fit in fits])
@@ -102,6 +102,10 @@ def show(
                                     facecolors='none'
                                 )
                         except ValueError:
+                            pass
+                        try:
+                            ax.set_ylim(np.percentile(2, data_), np.percentile(96, data_))
+                        except Exception:
                             pass
                     except Exception as e:
                         log.exception("Failed a regression analysis", exc_info=e)
